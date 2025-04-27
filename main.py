@@ -576,10 +576,10 @@ class SocialNetworkAnalyzer:
                 self.metrics_text.insert(END, f"Number of communities detected: {len(louvain_communities)}\n")
                 self.metrics_text.insert(END, f"Community Size Distribution: {community_sizes}\n")
 
-                # Add conductance for each community
                 for comm_id, nodes in louvain_communities.items():
                     community_conductance = conductance(g, nodes)
                     self.metrics_text.insert(END, f"Conductance of community {comm_id}: {community_conductance:.4f}\n")
+                    self.metrics_text.insert(END, f"Nodes in community {comm_id}: {', '.join(map(str, nodes))}\n")
 
                 # Add community as node attribute for visualization
                 for node in g.nodes():
@@ -591,39 +591,40 @@ class SocialNetworkAnalyzer:
                 self.metrics_text.insert(END, f"Number of communities detected: {len(girvan_communities)}\n")
                 self.metrics_text.insert(END, f"Number of edges removed: {girvan_edges_removed}\n")
 
-                # Community Size Distribution for Girvan-Newman
                 girvan_community_sizes = get_community_sizes({i: comm for i, comm in enumerate(girvan_communities)})
                 self.metrics_text.insert(END,
                                          f"Community Size Distribution (Girvan-Newman): {girvan_community_sizes}\n")
 
-                # Add conductance for each community in Girvan-Newman
                 for comm_id, nodes in enumerate(girvan_communities):
                     community_conductance = conductance(g, nodes)
                     self.metrics_text.insert(END, f"Conductance of community {comm_id}: {community_conductance:.4f}\n")
+                    self.metrics_text.insert(END, f"Nodes in community {comm_id}: {', '.join(map(str, nodes))}\n")
 
-                # For visualization, we'll just use the first level communities
                 for i, comm in enumerate(girvan_communities):
                     for node in comm:
                         self.node_attributes[node] = {'community': i}
 
-            # Compare Modularity Scores between algorithms
-            if louvain_modularity:
-                self.metrics_text.insert(END, f"\nLouvain Modularity: {louvain_modularity:.4f}\n")
+            # Clustering Evaluation Section
+            self.metrics_text.insert(END, "\nClustering Evaluation:\n")
 
+            # 1. Internal: Louvain Modularity
+            if louvain_modularity:
+                self.metrics_text.insert(END, f"Louvain Modularity: {louvain_modularity:.4f}\n")
+
+            # 2. Internal: Girvan-Newman Modularity
             if girvan_communities:
-                # Calculate modularity for Girvan-Newman
                 girvan_partition = {node: next(i for i, c in enumerate(girvan_communities) if node in c) for node in
                                     g.nodes()}
                 girvan_modularity = community_louvain.modularity(girvan_partition, g)
                 self.metrics_text.insert(END, f"Girvan-Newman Modularity: {girvan_modularity:.4f}\n")
 
-            # Compute and display Normalized Mutual Information (NMI) between Louvain and Girvan-Newman if both results are available
+            # 3. External: Normalized Mutual Information (NMI)
             if louvain_partition and girvan_communities:
                 louvain_labels = [louvain_partition[node] for node in g.nodes()]
                 girvan_labels = [next(i for i, c in enumerate(girvan_communities) if node in c) for node in g.nodes()]
                 nmi_score = normalized_mutual_info_score(louvain_labels, girvan_labels)
                 self.metrics_text.insert(END,
-                                         f"\nNormalized Mutual Information (NMI) between Louvain and Girvan-Newman: {nmi_score:.4f}\n")
+                                         f"Normalized Mutual Information (NMI) between Louvain and Girvan-Newman: {nmi_score:.4f}\n")
 
             # Update the community combobox with the available community labels
             community_list = self.get_community_list()
@@ -703,7 +704,7 @@ class SocialNetworkAnalyzer:
                     self.node_attributes[node] = {'betweenness': betweenness[node]}
 
             self.metrics_text.insert(END, "\nBetweenness Centrality Results:\n")
-            top_nodes = sorted(betweenness.items(), key=lambda x: x[1], reverse=True)[:5]
+            top_nodes = sorted(betweenness.items(), key=lambda x: x[1], reverse=True)
             for node, score in top_nodes:
                 self.metrics_text.insert(END, f"Node {node}: {score:.4f}\n")
 
