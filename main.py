@@ -1,16 +1,16 @@
-import networkx as nx
-import pandas as pd
-from pyvis.network import Network
-import community as community_louvain
-from networkx.algorithms.community import girvan_newman
-import matplotlib.pyplot as plt
-from tkinter import *
-from tkinter import filedialog, ttk, messagebox
-import webbrowser
 import os
 import warnings
-
-
+import webbrowser
+from tkinter import *
+from tkinter import filedialog, ttk, messagebox, END
+import community as community_louvain
+import networkx as nx
+import pandas as pd
+from community import community_louvain
+from networkx.algorithms.community import girvan_newman
+from pyvis.network import Network
+from sklearn.metrics import normalized_mutual_info_score
+from networkx.algorithms.community import girvan_newman
 
 class SocialNetworkAnalyzer:
     def __init__(self, root):
@@ -532,56 +532,106 @@ class SocialNetworkAnalyzer:
             messagebox.showwarning("Warning", "The graph is empty - nothing to analyze")
             return
 
+        # Get selected algorithm
         algo = self.community_algo.get()
 
         try:
-            if algo == "Louvain":
-                partition = community_louvain.best_partition(g)
-                communities = {}
-                for node, comm_id in partition.items():
-                    if comm_id not in communities:
-                        communities[comm_id] = []
-                    communities[comm_id].append(node)
+            # Run Louvain Community Detection
+            louvain_partition = None
+            louvain_modularity = None
+            louvain_communities = None
+            if algo == "Louvain" or algo == "Both":
+                louvain_partition = community_louvain.best_partition(g)
+                louvain_modularity = community_louvain.modularity(louvain_partition, g)
+                louvain_communities = {comm_id: [] for comm_id in louvain_partition.values()}
+                for node, comm_id in louvain_partition.items():
+                    louvain_communities[comm_id].append(node)
 
-                modularity = community_louvain.modularity(partition, g)
-                self.metrics_text.insert(END, f"\nLouvain Community Detection:\n")
-                self.metrics_text.insert(END, f"Number of communities: {len(communities)}\n")
-                self.metrics_text.insert(END, f"Modularity: {modularity:.4f}\n")
+            # Run Girvan-Newman Community Detection
+            girvan_communities = None
+            girvan_edges_removed = None
+            if algo == "Girvan-Newman" or algo == "Both":
+                comp = girvan_newman(g)
+                girvan_communities = tuple(sorted(c) for c in next(comp))
+                girvan_edges_removed = len(g.edges()) - len(girvan_communities)  # Number of edges removed
+
+            # Update results in GUI
+            self.metrics_text.insert(END, "\nCommunity Detection Comparison:\n")
+
+            # Function to calculate community size distribution
+            def get_community_sizes(community_dict):
+                return [len(nodes) for nodes in community_dict.values()]
+
+            # Function to calculate conductance
+            def conductance(graph, community_nodes):
+                cut_size = sum(1 for u in community_nodes for v in graph.neighbors(u) if v not in community_nodes)
+                volume = len(community_nodes) * (len(graph.nodes()) - len(community_nodes))
+                return cut_size / volume if volume > 0 else 0
+
+            # Display Louvain results
+            if louvain_partition:
+                community_sizes = get_community_sizes(louvain_communities)
+                self.metrics_text.insert(END, f"\nLouvain Algorithm:\n")
+                self.metrics_text.insert(END, f"Number of communities detected: {len(louvain_communities)}\n")
+                self.metrics_text.insert(END, f"Modularity: {louvain_modularity:.4f}\n")
+                self.metrics_text.insert(END, f"Community Size Distribution (Louvain): {community_sizes}\n")
+
+                # Add community conductance for each community
+                for comm_id, nodes in louvain_communities.items():
+                    community_conductance = conductance(g, nodes)
+                    self.metrics_text.insert(END, f"Conductance of community {comm_id}: {community_conductance:.4f}\n")
 
                 # Add community as node attribute for visualization
                 for node in g.nodes():
                     if node in self.node_attributes:
-                        self.node_attributes[node]['community'] = partition[node]
+                        self.node_attributes[node]['community'] = louvain_partition[node]
                     else:
-                        self.node_attributes[node] = {'community': partition[node]}
+                        self.node_attributes[node] = {'community': louvain_partition[node]}
 
-            elif algo == "Girvan-Newman":
-                comp = girvan_newman(g)
-                communities = tuple(sorted(c) for c in next(comp))
-                self.metrics_text.insert(END, f"\nGirvan-Newman Community Detection:\n")
-                self.metrics_text.insert(END, f"Number of communities: {len(communities)}\n")
+            # Display Girvan-Newman results
+            if girvan_communities:
+                self.metrics_text.insert(END, f"\nGirvan-Newman Algorithm:\n")
+                self.metrics_text.insert(END, f"Number of communities detected: {len(girvan_communities)}\n")
+                self.metrics_text.insert(END, f"Number of edges removed: {girvan_edges_removed}\n")
 
                 # For visualization, we'll just use the first level communities
-                for i, comm in enumerate(communities):
+                for i, comm in enumerate(girvan_communities):
                     for node in comm:
                         if node in self.node_attributes:
                             self.node_attributes[node]['community'] = i
                         else:
                             self.node_attributes[node] = {'community': i}
 
-            # Prepare community list for the Combobox
-            community_list = [str(i) for i in range(len(communities))]  # Use string for consistency with combobox
+            # Modularity comparison between algorithms
+            if louvain_modularity:
+                self.metrics_text.insert(END, f"Louvain Modularity: {louvain_modularity:.4f}\n")
 
-            # Update the selected_community Combobox with the detected communities
+            if girvan_communities:
+                # Calculate modularity for Girvan-Newman
+                girvan_partition = {node: next(i for i, c in enumerate(girvan_communities) if node in c) for node in
+                                    g.nodes()}
+                girvan_modularity = community_louvain.modularity(girvan_partition, g)
+                self.metrics_text.insert(END, f"Girvan-Newman Modularity: {girvan_modularity:.4f}\n")
+
+            # Normalized Mutual Information (NMI) between Louvain and Girvan-Newman
+            if louvain_partition and girvan_communities:
+                louvain_labels = [louvain_partition[node] for node in g.nodes()]
+                girvan_labels = [next(i for i, c in enumerate(girvan_communities) if node in c) for node in g.nodes()]
+                nmi_score = normalized_mutual_info_score(louvain_labels, girvan_labels)
+                self.metrics_text.insert(END,
+                                         f"Normalized Mutual Information (NMI) between Louvain and Girvan-Newman: {nmi_score:.4f}\n")
+
+            # Combine community information in combobox
+            community_list = self.get_community_list()
             self.selected_community['values'] = community_list
-            if community_list:  # Set the default selection to the first community if there are any
+            if community_list:
                 self.selected_community.set(community_list[0])
 
             self.node_color_attr.set('community')
             self.metrics_text.insert(END, "Community information added to node attributes for visualization\n")
 
         except Exception as e:
-            messagebox.showerror("Error", f"Community detection failed: {str(e)}")
+            messagebox.showerror("Error", f"Community detection comparison failed: {str(e)}")
 
     def get_community_list(self):
         # Collect all unique community labels from the node attributes
