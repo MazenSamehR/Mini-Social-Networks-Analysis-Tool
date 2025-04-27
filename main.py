@@ -11,6 +11,7 @@ import os
 import warnings
 
 
+
 class SocialNetworkAnalyzer:
     def __init__(self, root):
         self.root = root
@@ -27,101 +28,145 @@ class SocialNetworkAnalyzer:
         self.setup_ui()
 
     def setup_ui(self):
-        # Main frames
-        control_frame = Frame(self.root, padx=10, pady=10)
-        control_frame.pack(side=LEFT, fill=Y)
+        # Main frame with scrollable content
+        main_frame = Frame(self.root, padx=20, pady=20, bg="#f5f5f5")
+        main_frame.pack(side=LEFT, fill=Y, expand=True)
+
+        # Scrollbar and canvas for scrolling
+        canvas = Canvas(main_frame)
+        scrollbar = Scrollbar(main_frame, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        scrollbar.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+
+        # Create a frame inside the canvas that will hold all the widgets
+        control_frame = Frame(canvas, padx=20, pady=20, bg="#f5f5f5")
+        canvas.create_window((0, 0), window=control_frame, anchor="nw")
+
+        control_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
         visualization_frame = Frame(self.root, padx=10, pady=10)
         visualization_frame.pack(side=RIGHT, expand=True, fill=BOTH)
 
         # Load data section
-        Label(control_frame, text="Load Network Data", font=('Arial', 12, 'bold')).grid(row=0, column=0, columnspan=2,
-                                                                                        pady=5)
-        Button(control_frame, text="Load Nodes CSV", command=self.load_nodes).grid(row=1, column=0, pady=5)
-        Button(control_frame, text="Load Edges CSV", command=self.load_edges).grid(row=1, column=1, pady=5)
+        Label(control_frame, text="Load Network Data", font=('Arial', 14, 'bold'), bg="#f5f5f5").grid(row=0, column=0,
+                                                                                                      columnspan=2,
+                                                                                                      pady=10,
+                                                                                                      sticky='w')
+        Button(control_frame, text="Load Nodes CSV", command=self.load_nodes, relief="raised", width=20).grid(row=1,
+                                                                                                              column=0,
+                                                                                                              pady=10,
+                                                                                                              sticky='ew')
+        Button(control_frame, text="Load Edges CSV", command=self.load_edges, relief="raised", width=20).grid(row=1,
+                                                                                                              column=1,
+                                                                                                              pady=10,
+                                                                                                              sticky='ew')
 
-        # Graph type
-        Label(control_frame, text="Graph Type:", font=('Arial', 10)).grid(row=2, column=0, pady=5)
+        # Graph type selection
+        Label(control_frame, text="Graph Type:", font=('Arial', 12), bg="#f5f5f5").grid(row=2, column=0, pady=10,
+                                                                                        sticky='w')
         self.graph_type = StringVar(value="undirected")
-        Radiobutton(control_frame, text="Undirected", variable=self.graph_type, value="undirected").grid(row=3,
-                                                                                                         column=0)
-        Radiobutton(control_frame, text="Directed", variable=self.graph_type, value="directed").grid(row=3, column=1)
+        Radiobutton(control_frame, text="Undirected", variable=self.graph_type, value="undirected", relief="solid",
+                    width=15).grid(row=3, column=0, pady=5, sticky='ew')
+        Radiobutton(control_frame, text="Directed", variable=self.graph_type, value="directed", relief="solid",
+                    width=15).grid(row=3, column=1, pady=5, sticky='ew')
 
-        # Visualization options
-        Label(control_frame, text="Visualization Options", font=('Arial', 12, 'bold')).grid(row=4, column=0,
-                                                                                            columnspan=2, pady=10)
+        # Visualization options section
+        Label(control_frame, text="Visualization Options", font=('Arial', 14, 'bold'), bg="#f5f5f5").grid(row=4,
+                                                                                                          column=0,
+                                                                                                          columnspan=2,
+                                                                                                          pady=15,
+                                                                                                          sticky='w')
 
         # Node Shape Selection
-        Label(control_frame, text="Node Shape Attribute:").grid(row=5, column=0, pady=5)
-        self.node_shape_attr = ttk.Combobox(control_frame, values=["dot", "square", "triangle", "star"])
-        self.node_shape_attr.grid(row=5, column=1, pady=5)
+        Label(control_frame, text="Node Shape Attribute:", bg="#f5f5f5").grid(row=5, column=0, pady=10, sticky='w')
+        self.node_shape_attr = ttk.Combobox(control_frame, values=["dot", "square", "triangle", "star"], width=18)
+        self.node_shape_attr.grid(row=5, column=1, pady=10, sticky='ew')
         self.node_shape_attr.set("dot")
 
         # Edge Style Selection
-        Label(control_frame, text="Edge Style:").grid(row=6, column=0, pady=5)
-        self.edge_style_attr = ttk.Combobox(control_frame, values=["solid", "dashed", "dotted"])
-        self.edge_style_attr.grid(row=6, column=1, pady=5)
+        Label(control_frame, text="Edge Style:", bg="#f5f5f5").grid(row=6, column=0, pady=10, sticky='w')
+        self.edge_style_attr = ttk.Combobox(control_frame, values=["solid", "dashed", "dotted"], width=18)
+        self.edge_style_attr.grid(row=6, column=1, pady=10, sticky='ew')
         self.edge_style_attr.set("solid")
 
         # Layout algorithms
-        Label(control_frame, text="Layout Algorithm:").grid(row=7, column=0, pady=5)
-        self.layout_algo = ttk.Combobox(control_frame, values=["force-directed", "hierarchical", "circular", "random"])
-        self.layout_algo.grid(row=7, column=1, pady=5)
+        Label(control_frame, text="Layout Algorithm:", bg="#f5f5f5").grid(row=7, column=0, pady=10, sticky='w')
+        self.layout_algo = ttk.Combobox(control_frame, values=["force-directed", "hierarchical", "circular", "random"],
+                                        width=18)
+        self.layout_algo.grid(row=7, column=1, pady=10, sticky='ew')
         self.layout_algo.set("force-directed")
 
-        # Node attributes
-        Label(control_frame, text="Node Size Attribute:").grid(row=8, column=0, pady=5)
-        self.node_size_attr = ttk.Combobox(control_frame)
-        self.node_size_attr.grid(row=8, column=1, pady=5)
+        # Node size and color attributes
+        Label(control_frame, text="Node Size Attribute:", bg="#f5f5f5").grid(row=8, column=0, pady=10, sticky='w')
+        self.node_size_attr = ttk.Combobox(control_frame, width=18)
+        self.node_size_attr.grid(row=8, column=1, pady=10, sticky='ew')
 
-        Label(control_frame, text="Node Color Attribute:").grid(row=9, column=0, pady=5)
-        self.node_color_attr = ttk.Combobox(control_frame)
-        self.node_color_attr.grid(row=9, column=1, pady=5)
+        Label(control_frame, text="Node Color Attribute:", bg="#f5f5f5").grid(row=9, column=0, pady=10, sticky='w')
+        self.node_color_attr = ttk.Combobox(control_frame, width=18)
+        self.node_color_attr.grid(row=9, column=1, pady=10, sticky='ew')
 
-        # Filtering options
-        Label(control_frame, text="Filtering Options", font=('Arial', 12, 'bold')).grid(row=10, column=0, columnspan=2,
-                                                                                        pady=10)
+        # Community detection section
+        Label(control_frame, text="Community Detection", font=('Arial', 14, 'bold'), bg="#f5f5f5").grid(row=10,
+                                                                                                        column=0,
+                                                                                                        columnspan=2,
+                                                                                                        pady=15,
+                                                                                                        sticky='w')
 
-        Label(control_frame, text="Filter by Centrality:").grid(row=11, column=0, pady=5)
-        self.centrality_type = ttk.Combobox(control_frame, values=["degree", "betweenness", "eigenvector"])
-        self.centrality_type.grid(row=11, column=1, pady=5)
+        self.community_algo = ttk.Combobox(control_frame, values=["Louvain", "Girvan-Newman"], width=18)
+        self.community_algo.grid(row=11, column=0, columnspan=2, pady=10, sticky='ew')
 
-        Label(control_frame, text="Min Value:").grid(row=12, column=0, pady=5)
-        self.min_centrality = Entry(control_frame)
-        self.min_centrality.grid(row=12, column=1, pady=5)
+        Button(control_frame, text="Detect Communities", command=self.detect_communities, relief="raised",
+               width=20).grid(row=12, column=0, columnspan=2, pady=15, sticky='ew')
 
-        Label(control_frame, text="Max Value:").grid(row=13, column=0, pady=5)
-        self.max_centrality = Entry(control_frame)
-        self.max_centrality.grid(row=13, column=1, pady=5)
+        # Filtering options section
+        Label(control_frame, text="Filtering Options", font=('Arial', 14, 'bold'), bg="#f5f5f5").grid(row=13, column=0,
+                                                                                                      columnspan=2,
+                                                                                                      pady=15,
+                                                                                                      sticky='w')
 
-        Button(control_frame, text="Apply Filter", command=self.apply_filter).grid(row=14, column=0, columnspan=2,
-                                                                                   pady=10)
+        Label(control_frame, text="Filter by Centrality:", bg="#f5f5f5").grid(row=14, column=0, pady=10, sticky='w')
+        self.centrality_type = ttk.Combobox(control_frame, values=["degree", "betweenness", "eigenvector"], width=18)
+        self.centrality_type.grid(row=14, column=1, pady=10, sticky='ew')
 
-        # Community detection
-        Label(control_frame, text="Community Detection", font=('Arial', 12, 'bold')).grid(row=15, column=0,
-                                                                                          columnspan=2, pady=10)
+        Label(control_frame, text="Min Value:", bg="#f5f5f5").grid(row=15, column=0, pady=10, sticky='w')
+        self.min_centrality = Entry(control_frame, width=18)
+        self.min_centrality.grid(row=15, column=1, pady=10, sticky='ew')
 
-        self.community_algo = ttk.Combobox(control_frame, values=["Louvain", "Girvan-Newman"])
-        self.community_algo.grid(row=16, column=0, columnspan=2, pady=5)
+        Label(control_frame, text="Max Value:", bg="#f5f5f5").grid(row=16, column=0, pady=10, sticky='w')
+        self.max_centrality = Entry(control_frame, width=18)
+        self.max_centrality.grid(row=16, column=1, pady=10, sticky='ew')
 
-        Button(control_frame, text="Detect Communities", command=self.detect_communities).grid(row=17, column=0,
-                                                                                               columnspan=2, pady=10)
+        # Community filtering section
+        Label(control_frame, text="Filter by Community:", bg="#f5f5f5").grid(row=17, column=0, pady=10, sticky='w')
+        self.selected_community = ttk.Combobox(control_frame, values=self.get_community_list(), width=18)
+        self.selected_community.grid(row=17, column=1, pady=10, sticky='ew')
 
-        # Link analysis
-        Label(control_frame, text="Link Analysis", font=('Arial', 12, 'bold')).grid(row=18, column=0, columnspan=2,
-                                                                                    pady=10)
+        Button(control_frame, text="Apply Centrality Filter", command=self.apply_centrality_filter, relief="raised",
+               width=20).grid(row=18, column=0, columnspan=2, pady=15, sticky='ew')
+        Button(control_frame, text="Apply Community Filter", command=self.apply_community_filter, relief="raised",
+               width=20).grid(row=19, column=0, columnspan=2, pady=15, sticky='ew')
 
-        Button(control_frame, text="Run PageRank", command=self.run_pagerank).grid(row=19, column=0, columnspan=2,
-                                                                                   pady=5)
-        Button(control_frame, text="Run Betweenness", command=self.run_betweenness).grid(row=20, column=0, columnspan=2,
-                                                                                         pady=5)
+        # Link analysis section
+        Label(control_frame, text="Link Analysis", font=('Arial', 14, 'bold'), bg="#f5f5f5").grid(row=20, column=0,
+                                                                                                  columnspan=2, pady=15,
+                                                                                                  sticky='w')
+
+        Button(control_frame, text="Run PageRank", command=self.run_pagerank, relief="raised", width=20).grid(row=21,
+                                                                                                              column=0,
+                                                                                                              columnspan=2,
+                                                                                                              pady=10,
+                                                                                                              sticky='ew')
+        Button(control_frame, text="Run Betweenness", command=self.run_betweenness, relief="raised", width=20).grid(
+            row=22, column=0, columnspan=2, pady=10, sticky='ew')
 
         # Visualize button
-        Button(control_frame, text="Visualize Network", command=self.visualize_network,
-               bg="lightblue", font=('Arial', 10, 'bold')).grid(row=21, column=0, columnspan=2, pady=20)
+        Button(control_frame, text="Visualize Network", command=self.visualize_network, bg="#4CAF50", fg="white",
+               relief="raised", font=('Arial', 12, 'bold')).grid(row=23, column=0, columnspan=2, pady=20, sticky='ew')
 
         # Metrics display
-        self.metrics_text = Text(visualization_frame, width=80, height=30)
+        self.metrics_text = Text(visualization_frame, width=80, height=30, bg="#f0f0f0", font=('Arial', 10))
         self.metrics_text.pack(expand=True, fill=BOTH)
 
     def load_nodes(self):
@@ -148,26 +193,39 @@ class SocialNetworkAnalyzer:
             try:
                 df = pd.read_csv(filepath)
 
+                # Normalize column names to lowercase
                 df.columns = [col.lower() for col in df.columns]
 
+                # Check if 'source' and 'target' columns exist
                 if 'source' not in df.columns or 'target' not in df.columns:
                     messagebox.showerror("Error",
                                          "CSV file must contain 'Source' and 'Target' columns (case insensitive)")
                     return
 
+                # Ensure 'weight' is a column, or assign default weight 1 if missing
+                if 'weight' not in df.columns:
+                    df['weight'] = 1  # Add default weight column if it's missing
+
+                # Handle duplicate edges (source-target pairs) by grouping and summing the weights
+                df = df.groupby(['source', 'target'], as_index=False).agg({'weight': 'sum'})
+
+                # If the graph type is undirected
                 if self.graph_type.get() == "undirected":
                     self.graph = nx.from_pandas_edgelist(df, source='source', target='target', edge_attr=True)
                     self.current_graph_type = "undirected"
-                else:
+                else:  # If the graph type is directed
                     self.directed_graph = nx.from_pandas_edgelist(df, source='source', target='target', edge_attr=True,
                                                                   create_using=nx.DiGraph())
                     self.current_graph_type = "directed"
 
-                # Edge attributes
+                # Edge attributes (including weight)
                 self.edge_attributes = df.set_index(['source', 'target']).to_dict('index')
+
+                # Update the attribute comboboxes and display metrics
                 self.update_attribute_comboboxes()
                 self.metrics_text.insert(END, f"Loaded {len(df)} edges from {filepath}\n")
                 self.calculate_basic_metrics()
+
             except Exception as e:
                 messagebox.showerror("Error", f"Error loading edges: {str(e)}")
 
@@ -362,7 +420,7 @@ class SocialNetworkAnalyzer:
 
         return f"hsl({h}, {s}%, {l}%)"
 
-    def apply_filter(self):
+    def apply_centrality_filter(self):
         if self.current_graph_type == "undirected":
             g = self.graph
         else:
@@ -372,11 +430,13 @@ class SocialNetworkAnalyzer:
             messagebox.showwarning("Warning", "The graph is empty - nothing to filter")
             return
 
+        # Get filter options from the user
         centrality_type = self.centrality_type.get()
         min_val = float(self.min_centrality.get()) if self.min_centrality.get() else 0
         max_val = float(self.max_centrality.get()) if self.max_centrality.get() else float('inf')
 
         try:
+            # Apply centrality filtering
             if centrality_type == "degree":
                 centrality = nx.degree_centrality(g)
             elif centrality_type == "betweenness":
@@ -392,6 +452,7 @@ class SocialNetworkAnalyzer:
                 messagebox.showwarning("Warning", "Please select a centrality type")
                 return
 
+            # Filter nodes based on centrality score range
             filtered_nodes = [n for n, c in centrality.items() if min_val <= c <= max_val]
 
             if not filtered_nodes:
@@ -406,12 +467,60 @@ class SocialNetworkAnalyzer:
             else:
                 self.directed_graph = filtered_graph
 
+            # Display filtering results
             self.metrics_text.insert(END,
                                      f"\nApplied {centrality_type} centrality filter: {len(filtered_nodes)}/{g.number_of_nodes()} nodes remain\n")
             self.calculate_basic_metrics()
 
         except Exception as e:
-            messagebox.showerror("Error", f"An error occurred during filtering: {str(e)}")
+            messagebox.showerror("Error", f"An error occurred during centrality filtering: {str(e)}")
+
+    def apply_community_filter(self):
+        if self.current_graph_type == "undirected":
+            g = self.graph
+        else:
+            g = self.directed_graph
+
+        if g.number_of_nodes() == 0:
+            messagebox.showwarning("Warning", "The graph is empty - nothing to filter")
+            return
+
+        selected_community = self.selected_community.get()
+
+        if not selected_community:
+            messagebox.showwarning("Warning", "Please select a community to filter by")
+            return
+
+        # Ensure selected_community is treated as an integer if communities are integers
+        try:
+            selected_community = int(selected_community)  # Convert to int if communities are integers
+        except ValueError:
+            pass  # If it's not an integer, it may be a string (you can handle accordingly)
+
+        try:
+            # Filter nodes based on selected community
+            filtered_nodes = [n for n in g.nodes() if
+                              self.node_attributes.get(n, {}).get('community') == selected_community]
+
+            if not filtered_nodes:
+                messagebox.showwarning("Warning", "No nodes match the selected community")
+                return
+
+            # Create subgraph with filtered nodes
+            filtered_graph = g.subgraph(filtered_nodes)
+
+            if self.current_graph_type == "undirected":
+                self.graph = filtered_graph
+            else:
+                self.directed_graph = filtered_graph
+
+            # Display filtering results
+            self.metrics_text.insert(END,
+                                     f"\nApplied community filter: {len(filtered_nodes)}/{g.number_of_nodes()} nodes remain\n")
+            self.calculate_basic_metrics()
+
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred during community filtering: {str(e)}")
 
     def detect_communities(self):
         if self.current_graph_type == "undirected":
@@ -460,11 +569,32 @@ class SocialNetworkAnalyzer:
                         else:
                             self.node_attributes[node] = {'community': i}
 
+            # Prepare community list for the Combobox
+            community_list = [str(i) for i in range(len(communities))]  # Use string for consistency with combobox
+
+            # Update the selected_community Combobox with the detected communities
+            self.selected_community['values'] = community_list
+            if community_list:  # Set the default selection to the first community if there are any
+                self.selected_community.set(community_list[0])
+
             self.node_color_attr.set('community')
             self.metrics_text.insert(END, "Community information added to node attributes for visualization\n")
 
         except Exception as e:
             messagebox.showerror("Error", f"Community detection failed: {str(e)}")
+
+    def get_community_list(self):
+        # Collect all unique community labels from the node attributes
+        communities = set()
+
+        # Ensure that the node_attributes dictionary has the 'community' key
+        for node, attrs in self.node_attributes.items():
+            community = attrs.get('community')
+            if community is not None:
+                communities.add(str(community))  # Make sure it's a string for consistency with combobox
+
+        # Convert the set to a sorted list (optional)
+        return sorted(list(communities))
 
     def run_pagerank(self):
         if self.current_graph_type == "undirected":
@@ -487,7 +617,7 @@ class SocialNetworkAnalyzer:
                     self.node_attributes[node] = {'pagerank': pr[node]}
 
             self.metrics_text.insert(END, "\nPageRank Results:\n")
-            top_nodes = sorted(pr.items(), key=lambda x: x[1], reverse=True)[:5]
+            top_nodes = sorted(pr.items(), key=lambda x: x[1], reverse=True)
             for node, score in top_nodes:
                 self.metrics_text.insert(END, f"Node {node}: {score:.4f}\n")
 
