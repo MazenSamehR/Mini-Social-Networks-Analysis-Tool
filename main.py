@@ -196,6 +196,7 @@ class SocialNetworkAnalyzer:
         self.metrics_text.insert(END, f"Number of nodes: {g.number_of_nodes()}\n")
         self.metrics_text.insert(END, f"Number of edges: {g.number_of_edges()}\n")
 
+        # Average Shortest Path Length
         try:
             if nx.is_connected(g.to_undirected() if self.current_graph_type == "directed" else g):
                 self.metrics_text.insert(END,
@@ -206,16 +207,44 @@ class SocialNetworkAnalyzer:
         except nx.NetworkXPointlessConcept:
             self.metrics_text.insert(END, "Graph is empty - cannot calculate connectivity\n")
 
+        # Average Clustering Coefficient
         try:
             self.metrics_text.insert(END, f"Average clustering coefficient: {nx.average_clustering(g):.4f}\n")
         except nx.NetworkXError as e:
             self.metrics_text.insert(END, f"Could not calculate clustering coefficient: {str(e)}\n")
 
+        # Degree Assortativity Coefficient
         try:
             self.metrics_text.insert(END,
                                      f"Degree assortativity coefficient: {nx.degree_assortativity_coefficient(g):.4f}\n")
         except nx.NetworkXError as e:
             self.metrics_text.insert(END, f"Could not calculate assortativity: {str(e)}\n")
+
+        # Degree Distribution
+        degree_sequence = [d for n, d in g.degree()]
+        degree_count = {i: degree_sequence.count(i) for i in set(degree_sequence)}
+        self.metrics_text.insert(END, f"Degree Distribution: {degree_count}\n")
+
+        # Degree Centrality
+        try:
+            degree_centrality = nx.degree_centrality(g)
+            self.metrics_text.insert(END, f"Degree Centrality: {degree_centrality}\n")
+        except Exception as e:
+            self.metrics_text.insert(END, f"Could not calculate degree centrality: {str(e)}\n")
+
+        # Betweenness Centrality
+        try:
+            betweenness_centrality = nx.betweenness_centrality(g)
+            self.metrics_text.insert(END, f"Betweenness Centrality: {betweenness_centrality}\n")
+        except Exception as e:
+            self.metrics_text.insert(END, f"Could not calculate betweenness centrality: {str(e)}\n")
+
+        # Eigenvector Centrality
+        try:
+            eigenvector_centrality = nx.eigenvector_centrality(g)
+            self.metrics_text.insert(END, f"Eigenvector Centrality: {eigenvector_centrality}\n")
+        except Exception as e:
+            self.metrics_text.insert(END, f"Could not calculate eigenvector centrality: {str(e)}\n")
 
     def visualize_network(self):
         if self.current_graph_type == "undirected":
@@ -283,14 +312,22 @@ class SocialNetworkAnalyzer:
                 if self.edge_attributes and edge in self.edge_attributes:
                     for attr, value in self.edge_attributes[edge].items():
                         edge_attrs[attr] = value
+                        if attr == "style":
+                            edge_attrs["dashes"] = True if value == "dashed" else False
                         if attr == "weight":
                             edge_attrs["width"] = float(value) / 10 if value else 1
                         if attr == "color":
                             edge_attrs["color"] = self.value_to_color(value)
-                        if attr == "style":
-                            edge_attrs["dashes"] = True if value == "dashed" else False
                         if attr == "width":
                             edge_attrs["width"] = float(value)
+
+                selected_style = self.edge_style_attr.get()
+                if selected_style == "dashed":
+                    edge_attrs["dashes"] = True
+                elif selected_style == "dotted":
+                    edge_attrs["dashes"] = [2, 5]
+                else:
+                    edge_attrs["dashes"] = False
 
                 net.add_edge(edge[0], edge[1], **edge_attrs)
 
