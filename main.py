@@ -32,8 +32,8 @@ class SocialNetworkAnalyzer:
 
     def setup_ui(self):
         # Main frame with scrollable content
-        main_frame = Frame(self.root, padx=20, pady=20, bg="#f5f5f5")
-        main_frame.pack(side=LEFT, fill=Y, expand=True)
+        main_frame = Frame(self.root, padx=10, pady=10, bg="#f5f5f5")
+        main_frame.pack(side=LEFT, fill=BOTH, expand=True)
 
         # Scrollbar and canvas for scrolling
         canvas = Canvas(main_frame, bg="#f5f5f5", highlightthickness=0)
@@ -41,32 +41,38 @@ class SocialNetworkAnalyzer:
         canvas.configure(yscrollcommand=scrollbar.set)
 
         scrollbar.pack(side="right", fill="y")
-        canvas.pack(side="left", fill="both", expand=True)
+        canvas.pack(side="left", fill=BOTH, expand=True)
 
-        # Create a frame inside the canvas that will hold all the widgets
-        control_frame = Frame(canvas, padx=20, pady=20, bg="#f5f5f5")
+        # Frame inside canvas
+        control_frame = Frame(canvas, padx=10, pady=10, bg="#f5f5f5")
         canvas.create_window((0, 0), window=control_frame, anchor="nw")
 
         control_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
-        visualization_frame = Frame(self.root, padx=10, pady=10, bg="white")
-        visualization_frame.pack(side=RIGHT, expand=True, fill=BOTH)
+        # Mousewheel scrolling
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
-        # Load data section
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        canvas.bind_all("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))  # Linux
+        canvas.bind_all("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))  # Linux
+
+        # Visualization frame
+        visualization_frame = Frame(self.root, padx=10, pady=10, bg="white")
+        visualization_frame.pack(side=RIGHT, fill=BOTH, expand=True)
+
+        # --------- UI Content ---------
         Label(control_frame, text="Load Network Data", font=('Arial', 16, 'bold'), bg="#f5f5f5").grid(row=0, column=0,
                                                                                                       columnspan=2,
-                                                                                                      pady=(0, 15),
+                                                                                                      pady=(0, 10),
                                                                                                       sticky='w')
         Button(control_frame, text="Load Nodes CSV", command=self.load_nodes, width=20).grid(row=1, column=0, pady=5,
                                                                                              sticky='ew')
         Button(control_frame, text="Load Edges CSV", command=self.load_edges, width=20).grid(row=1, column=1, pady=5,
                                                                                              sticky='ew')
-
-        # Reset button
         Button(control_frame, text="Reset Data", command=self.reset_data, width=20, bg="#ff4d4d", fg="white").grid(
-            row=2, column=0, columnspan=2, pady=(10, 20), sticky='ew')
+            row=2, column=0, columnspan=2, pady=(10, 10), sticky='ew')
 
-        # Graph type selection
         Label(control_frame, text="Graph Type:", font=('Arial', 14), bg="#f5f5f5").grid(row=3, column=0, pady=5,
                                                                                         sticky='w')
         self.graph_type = StringVar(value="undirected")
@@ -75,7 +81,6 @@ class SocialNetworkAnalyzer:
         Radiobutton(control_frame, text="Directed", variable=self.graph_type, value="directed",
                     command=self.on_graph_type_changed, bg="#f5f5f5").grid(row=4, column=1, sticky='w')
 
-        # Visualization options
         Label(control_frame, text="Visualization Options", font=('Arial', 16, 'bold'), bg="#f5f5f5").grid(row=5,
                                                                                                           column=0,
                                                                                                           columnspan=2,
@@ -106,7 +111,6 @@ class SocialNetworkAnalyzer:
         self.node_color_attr = ttk.Combobox(control_frame, width=18)
         self.node_color_attr.grid(row=10, column=1, pady=5, sticky='ew')
 
-        # Link Analysis section
         Label(control_frame, text="Link Analysis", font=('Arial', 16, 'bold'), bg="#f5f5f5").grid(row=11, column=0,
                                                                                                   columnspan=2,
                                                                                                   pady=(20, 10),
@@ -118,7 +122,6 @@ class SocialNetworkAnalyzer:
                                                                                                    columnspan=2, pady=5,
                                                                                                    sticky='ew')
 
-        # Community Detection section
         Label(control_frame, text="Community Detection", font=('Arial', 16, 'bold'), bg="#f5f5f5").grid(row=14,
                                                                                                         column=0,
                                                                                                         columnspan=2,
@@ -132,12 +135,10 @@ class SocialNetworkAnalyzer:
                                                                                                          pady=10,
                                                                                                          sticky='ew')
 
-        # Filtering options
         Label(control_frame, text="Filtering Options", font=('Arial', 16, 'bold'), bg="#f5f5f5").grid(row=17, column=0,
                                                                                                       columnspan=2,
                                                                                                       pady=(20, 10),
                                                                                                       sticky='w')
-
         Label(control_frame, text="Filter by Community:", bg="#f5f5f5").grid(row=18, column=0, pady=5, sticky='w')
         self.selected_community = ttk.Combobox(control_frame, values=self.get_community_list(), width=18)
         self.selected_community.grid(row=18, column=1, pady=5, sticky='ew')
@@ -162,13 +163,24 @@ class SocialNetworkAnalyzer:
         Button(control_frame, text="Apply Centrality Filter", command=self.apply_centrality_filter, width=20).grid(
             row=23, column=0, columnspan=2, pady=10, sticky='ew')
 
-        # Visualize button
         Button(control_frame, text="Visualize Network", command=self.visualize_network, bg="#4CAF50", fg="white",
                font=('Arial', 12, 'bold')).grid(row=24, column=0, columnspan=2, pady=20, sticky='ew')
 
-        # Metrics display
-        self.metrics_text = Text(visualization_frame, width=80, height=30, bg="#f0f0f0", font=('Arial', 10))
-        self.metrics_text.pack(expand=True, fill=BOTH)
+        # --------- Metrics Display ---------
+        self.metrics_text = Text(
+            visualization_frame,
+            width=80,
+            height=30,
+            bg="white",
+            fg="#333333",
+            font=('Arial', 12),
+            wrap="word",
+            padx=10,
+            pady=10,
+            bd=1,
+            relief="solid"
+        )
+        self.metrics_text.pack(expand=True, fill=BOTH, padx=10, pady=10)
 
     def on_graph_type_changed(self):
         self.current_graph_type = self.graph_type.get()
