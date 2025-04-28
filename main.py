@@ -1,4 +1,5 @@
 import os
+import hashlib
 import warnings
 import webbrowser
 from tkinter import *
@@ -210,7 +211,7 @@ class SocialNetworkAnalyzer:
 
         # Visualize Network
         Button(self.control_frame, text="Visualize Network", command=self.visualize_network,
-               bg=self.current_theme["button_bg"], fg="white", font=('Arial', 12, 'bold')).grid(row=24, column=0,
+               bg=self.current_theme["button_bg"], fg=self.current_theme["button_text_color"], font=('Arial', 12, 'bold')).grid(row=24, column=0,
                                                                                                 columnspan=2, pady=20,
                                                                                                 sticky='ew')
 
@@ -389,13 +390,14 @@ class SocialNetworkAnalyzer:
         self.metrics_text.insert(END, f"Number of nodes: {g.number_of_nodes()}\n")
         self.metrics_text.insert(END, f"Number of edges: {g.number_of_edges()}\n")
 
-        # Check for strong connectivity in directed graphs and issue warning
+        # Check for strong connectivity in directed graphs
         if self.current_graph_type == "directed":
             try:
                 if not nx.is_strongly_connected(g):
-                    self.metrics_text.insert(END, "Warning: The directed graph is not strongly connected. Some metrics may not be calculable.\n")
+                    self.metrics_text.insert(END,
+                                             "Warning: The directed graph is not strongly connected. Some metrics may not be calculable.\n")
             except nx.NetworkXPointlessConcept:
-                pass  # Graph is empty, handled elsewhere
+                pass
 
         # Average Shortest Path Length
         try:
@@ -404,13 +406,15 @@ class SocialNetworkAnalyzer:
                     avg_path = nx.average_shortest_path_length(g)
                     self.metrics_text.insert(END, f"Average shortest path length (directed): {avg_path:.4f}\n")
                 else:
-                    self.metrics_text.insert(END, "Cannot calculate average shortest path length: directed graph is not strongly connected.\n")
+                    self.metrics_text.insert(END,
+                                             "Cannot calculate average shortest path length: directed graph is not strongly connected.\n")
             else:
                 if nx.is_connected(g):
                     avg_path = nx.average_shortest_path_length(g)
                     self.metrics_text.insert(END, f"Average shortest path length: {avg_path:.4f}\n")
                 else:
-                    self.metrics_text.insert(END, "Cannot calculate average shortest path length: graph is not connected.\n")
+                    self.metrics_text.insert(END,
+                                             "Cannot calculate average shortest path length: graph is not connected.\n")
         except nx.NetworkXPointlessConcept:
             self.metrics_text.insert(END, "Graph is empty - cannot calculate average shortest path length.\n")
         except nx.NetworkXError as e:
@@ -422,11 +426,17 @@ class SocialNetworkAnalyzer:
         except nx.NetworkXError as e:
             self.metrics_text.insert(END, f"Could not calculate clustering coefficient: {str(e)}\n")
 
-        # Degree Assortativity Coefficient
+        # Degree Assortativity Coefficient (with warning suppression)
         try:
-            self.metrics_text.insert(END,
-                                     f"Degree assortativity coefficient: {nx.degree_assortativity_coefficient(g):.4f}\n")
-        except nx.NetworkXError as e:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=RuntimeWarning)
+                assortativity = nx.degree_assortativity_coefficient(g)
+                if np.isnan(assortativity):
+                    self.metrics_text.insert(END,
+                                             "Degree assortativity coefficient: Could not compute (invalid division)\n")
+                else:
+                    self.metrics_text.insert(END, f"Degree assortativity coefficient: {assortativity:.4f}\n")
+        except Exception as e:
             self.metrics_text.insert(END, f"Could not calculate assortativity: {str(e)}\n")
 
         # Degree Distribution
@@ -448,12 +458,32 @@ class SocialNetworkAnalyzer:
         except Exception as e:
             self.metrics_text.insert(END, f"Could not calculate betweenness centrality: {str(e)}\n")
 
-        # Eigenvector Centrality
+        # Eigenvector Centrality (with Katz fallback)
         try:
-            eigenvector_centrality = nx.eigenvector_centrality(g)
-            self.metrics_text.insert(END, f"Eigenvector Centrality: {eigenvector_centrality}\n")
+            if self.current_graph_type == "directed":
+                if not nx.is_strongly_connected(g):
+                    self.metrics_text.insert(END, "Eigenvector centrality unavailable: graph not strongly connected\n")
+                    self.metrics_text.insert(END, "Calculating Katz centrality instead...\n")
+                    katz = nx.katz_centrality(g, alpha=0.1, max_iter=1000)
+                    self.metrics_text.insert(END, f"Katz Centrality: {katz}\n")
+                else:
+                    eigenvector = nx.eigenvector_centrality(g, max_iter=1000)
+                    self.metrics_text.insert(END, f"Eigenvector Centrality: {eigenvector}\n")
+            else:  # undirected
+                if not nx.is_connected(g):
+                    self.metrics_text.insert(END, "Eigenvector centrality unavailable: graph not connected\n")
+                    self.metrics_text.insert(END, "Calculating Katz centrality instead...\n")
+                    katz = nx.katz_centrality(g, alpha=0.1, max_iter=1000)
+                    self.metrics_text.insert(END, f"Katz Centrality: {katz}\n")
+                else:
+                    eigenvector = nx.eigenvector_centrality(g, max_iter=1000)
+                    self.metrics_text.insert(END, f"Eigenvector Centrality: {eigenvector}\n")
+        except nx.PowerIterationFailedConvergence:
+            self.metrics_text.insert(END, "Eigenvector failed to converge - using Katz centrality\n")
+            katz = nx.katz_centrality(g, alpha=0.1)
+            self.metrics_text.insert(END, f"Katz Centrality: {katz}\n")
         except Exception as e:
-            self.metrics_text.insert(END, f"Could not calculate eigenvector centrality: {str(e)}\n")
+            self.metrics_text.insert(END, f"Centrality calculation error: {str(e)}\n")
 
     def visualize_network(self):
         if self.current_graph_type == "undirected":
@@ -541,7 +571,45 @@ class SocialNetworkAnalyzer:
             if layout == "force-directed":
                 net.force_atlas_2based(gravity=-50)
             elif layout == "hierarchical":
-                net.hierarchical_layout()
+                net.set_options("""
+                {
+                    "layout": {
+                        "hierarchical": {
+                            "enabled": true,
+                            "direction": "UD",
+                            "sortMethod": "directed"
+                        }
+                    }
+                }
+                """)
+            elif layout == "circular":
+                net.set_options("""
+                {
+                    "layout": {
+                        "randomSeed": 42,
+                        "improvedLayout": false
+                    },
+                    "physics": {
+                        "hierarchicalRepulsion": {
+                            "centralGravity": 0.0,
+                            "springLength": 200,
+                            "springConstant": 0.01,
+                            "nodeDistance": 100,
+                            "damping": 0.09
+                        },
+                        "minVelocity": 0.75,
+                        "solver": "repulsion"
+                    }
+                }
+                """)
+            elif layout == "random":
+                net.set_options("""
+                {
+                    "layout": {
+                        "randomSeed": 42
+                    }
+                }
+                """)
 
             # Save and show
             output_file = "network_visualization.html"
@@ -552,18 +620,26 @@ class SocialNetworkAnalyzer:
             messagebox.showerror("Error", f"Visualization failed: {str(e)}")
 
     def value_to_color(self, value):
-        import hashlib
 
-        # If value is numeric (like weight), don't handle it here
+
+        # Handle None or empty values
+        if value is None:
+            return "hsl(0, 0%, 50%)"  # Gray as fallback
+
+        # Convert numeric values to strings consistently
         if isinstance(value, (int, float)):
+            # Round floats to 4 decimal places to ensure consistent colors
+            value = f"{float(value):.4f}"
+        else:
             value = str(value)
 
-        # Use a stable hash to generate different colors
-        hash_val = int(hashlib.md5(value.encode()).hexdigest(), 16)
-        # Map to distinct HSL colors
-        h = hash_val % 360  # Hue: full circle
-        s = 90 + (hash_val % 10)  # Saturation: between 90-100% for bright colors
-        l = 50  # Lightness: fixed at 50% for contrast
+        # Generate hash - using sha256 for better distribution than md5
+        hash_val = int(hashlib.sha256(value.encode()).hexdigest(), 16)
+
+        # Calculate HSL values
+        h = hash_val % 360  # Hue (0-359)
+        s = 80 + (hash_val % 21)  # Saturation (80-100%) - more vibrant colors
+        l = 40 + (hash_val % 21)  # Lightness (40-60%) - better contrast
 
         return f"hsl({h}, {s}%, {l}%)"
 
@@ -577,36 +653,48 @@ class SocialNetworkAnalyzer:
             messagebox.showwarning("Warning", "The graph is empty - nothing to filter")
             return
 
-        # Get filter options from the user
         centrality_type = self.centrality_type.get()
         min_val = float(self.min_centrality.get()) if self.min_centrality.get() else 0
         max_val = float(self.max_centrality.get()) if self.max_centrality.get() else float('inf')
 
         try:
-            # Apply centrality filtering
             if centrality_type == "degree":
                 centrality = nx.degree_centrality(g)
             elif centrality_type == "betweenness":
                 centrality = nx.betweenness_centrality(g)
             elif centrality_type == "eigenvector":
+                # Check graph connectivity first
+                if self.current_graph_type == "directed":
+                    if not nx.is_strongly_connected(g):
+                        messagebox.showwarning("Cannot Calculate",
+                                               "Eigenvector centrality requires strongly connected graphs.\n"
+                                               "Please select a different centrality measure.")
+                        return
+                else:
+                    if not nx.is_connected(g):
+                        messagebox.showwarning("Cannot Calculate",
+                                               "Eigenvector centrality requires connected graphs.\n"
+                                               "Please select a different centrality measure.")
+                        return
+
+                # If we get here, the graph is properly connected
                 try:
-                    centrality = nx.eigenvector_centrality(g)
-                except nx.NetworkXError:
-                    messagebox.showwarning("Warning",
-                                           "Eigenvector centrality cannot be computed for this graph (may be disconnected)")
+                    centrality = nx.eigenvector_centrality(g, max_iter=500)
+                except nx.PowerIterationFailedConvergence:
+                    messagebox.showwarning("Calculation Failed",
+                                           "Eigenvector centrality failed to converge.\n"
+                                           "Please try degree or betweenness centrality instead.")
                     return
             else:
-                messagebox.showwarning("Warning", "Please select a centrality type")
+                messagebox.showwarning("Warning", "Please select a valid centrality type")
                 return
 
-            # Filter nodes based on centrality score range
             filtered_nodes = [n for n, c in centrality.items() if min_val <= c <= max_val]
 
             if not filtered_nodes:
                 messagebox.showwarning("Warning", "No nodes match the filter criteria")
                 return
 
-            # Create subgraph with filtered nodes
             filtered_graph = g.subgraph(filtered_nodes)
 
             if self.current_graph_type == "undirected":
@@ -614,14 +702,15 @@ class SocialNetworkAnalyzer:
             else:
                 self.directed_graph = filtered_graph
 
-            # Display filtering results
             self.metrics_text.insert(END,
-                                     f"\nApplied {centrality_type} centrality filter: {len(filtered_nodes)}/{g.number_of_nodes()} nodes remain\n")
+                                     f"\nApplied {centrality_type} centrality filter: "
+                                     f"{len(filtered_nodes)}/{g.number_of_nodes()} nodes remain\n")
             self.calculate_basic_metrics()
 
         except Exception as e:
-            messagebox.showerror("Error", f"An error occurred during centrality filtering: {str(e)}")
-
+            messagebox.showerror("Error",
+                                 f"Failed to calculate centrality:\n{str(e)}\n"
+                                 "Please try a different centrality measure.")
     def apply_community_filter(self):
         if self.current_graph_type == "undirected":
             g = self.graph
