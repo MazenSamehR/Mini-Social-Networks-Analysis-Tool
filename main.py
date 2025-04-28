@@ -6,7 +6,7 @@ from tkinter import filedialog, ttk, messagebox, END
 import community as community_louvain
 import networkx as nx
 import pandas as pd
-from community import community_louvain
+import numpy as np
 from pyvis.network import Network
 from sklearn.metrics import normalized_mutual_info_score
 from networkx.algorithms.community import girvan_newman
@@ -27,160 +27,265 @@ class SocialNetworkAnalyzer:
 
         # Suppress PyVis warnings
         warnings.filterwarnings("ignore", category=UserWarning)
+        # Themes
+        self.dark_theme = {
+            "bg_main": "#121212",
+            "bg_secondary": "#1E1E1E",
+            "button_bg": "#BB86FC",
+            "button_text_color": "#121212",
+            "text_color": "#F5F5F5",
+            "error_color": "#CF6679",
+        }
+        self.light_theme = {
+            "bg_main": "#D9D9D9",
+            "bg_secondary": "#D9D9D9",
+            "button_bg": "#00B96D",
+            "button_text_color": "#121212",
+            "text_color": "#000000",
+            "error_color": "#CF6679",
+        }
+        self.current_theme = self.dark_theme
 
         self.setup_ui()
 
     def setup_ui(self):
         # Main frame with scrollable content
-        main_frame = Frame(self.root, padx=10, pady=10, bg="#f5f5f5")
-        main_frame.pack(side=LEFT, fill=BOTH, expand=True)
+        self.main_frame = Frame(self.root, padx=10, pady=10, bg=self.current_theme["bg_main"])
+        self.main_frame.pack(side=LEFT, fill=BOTH, expand=True)
 
         # Scrollbar and canvas for scrolling
-        canvas = Canvas(main_frame, bg="#f5f5f5", highlightthickness=0)
-        scrollbar = Scrollbar(main_frame, orient="vertical", command=canvas.yview)
-        canvas.configure(yscrollcommand=scrollbar.set)
+        self.canvas = Canvas(self.main_frame, bg=self.current_theme["bg_main"], highlightthickness=0)
+        self.scrollbar = Scrollbar(self.main_frame, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
-        scrollbar.pack(side="right", fill="y")
-        canvas.pack(side="left", fill=BOTH, expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+        self.canvas.pack(side="left", fill=BOTH, expand=True)
 
         # Frame inside canvas
-        control_frame = Frame(canvas, padx=10, pady=10, bg="#f5f5f5")
-        canvas.create_window((0, 0), window=control_frame, anchor="nw")
+        self.control_frame = Frame(self.canvas, padx=10, pady=10, bg=self.current_theme["bg_main"])
+        self.canvas.create_window((0, 0), window=self.control_frame, anchor="nw")
 
-        control_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        self.control_frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
 
         # Mousewheel scrolling
         def _on_mousewheel(event):
-            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
-        canvas.bind_all("<MouseWheel>", _on_mousewheel)
-        canvas.bind_all("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))  # Linux
-        canvas.bind_all("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))  # Linux
+        self.canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        self.canvas.bind_all("<Button-4>", lambda e: self.canvas.yview_scroll(-1, "units"))  # Linux
+        self.canvas.bind_all("<Button-5>", lambda e: self.canvas.yview_scroll(1, "units"))  # Linux
 
         # Visualization frame
-        visualization_frame = Frame(self.root, padx=10, pady=10, bg="white")
-        visualization_frame.pack(side=RIGHT, fill=BOTH, expand=True)
+        self.visualization_frame = Frame(self.root, padx=10, pady=10, bg=self.current_theme["bg_secondary"])
+        self.visualization_frame.pack(side=RIGHT, fill=BOTH, expand=True)
 
         # --------- UI Content ---------
-        Label(control_frame, text="Load Network Data", font=('Arial', 16, 'bold'), bg="#f5f5f5").grid(row=0, column=0,
-                                                                                                      columnspan=2,
-                                                                                                      pady=(0, 10),
-                                                                                                      sticky='w')
-        Button(control_frame, text="Load Nodes CSV", command=self.load_nodes, width=20).grid(row=1, column=0, pady=5,
-                                                                                             sticky='ew')
-        Button(control_frame, text="Load Edges CSV", command=self.load_edges, width=20).grid(row=1, column=1, pady=5,
-                                                                                             sticky='ew')
-        Button(control_frame, text="Reset Data", command=self.reset_data, width=20, bg="#ff4d4d", fg="white").grid(
-            row=2, column=0, columnspan=2, pady=(10, 10), sticky='ew')
+        self.title_frame = Frame(self.control_frame, bg=self.current_theme["bg_main"])
+        self.title_frame.grid(row=0, column=0, columnspan=2, sticky='ew')
 
-        Label(control_frame, text="Graph Type:", font=('Arial', 14), bg="#f5f5f5").grid(row=3, column=0, pady=5,
-                                                                                        sticky='w')
+        Label(self.title_frame, text="Load Network Data", font=('Arial', 16, 'bold'),
+              bg=self.current_theme["bg_main"], fg=self.current_theme["text_color"]).pack(side=LEFT, pady=(0, 10))
+
+        # Theme toggle using Checkbutton (Switch-like)
+        self.theme_var = IntVar(value=0)  # 0 = Dark Theme, 1 = Light Theme
+        self.theme_toggle = Checkbutton(self.title_frame, text="Theme", variable=self.theme_var,
+                                        command=self.toggle_theme,
+                                        bg=self.current_theme["bg_main"], fg=self.current_theme["text_color"],
+                                        selectcolor=self.current_theme["button_bg"])
+        self.theme_toggle.pack(side=RIGHT, pady=(0, 10), padx=(10, 0))
+
+        # Buttons with button_text_color applied
+        Button(self.control_frame, text="Load Nodes CSV", command=self.load_nodes, width=20,
+               bg=self.current_theme["button_bg"], fg=self.current_theme["button_text_color"]).grid(row=1, column=0,
+                                                                                                    pady=5, sticky='ew')
+        Button(self.control_frame, text="Load Edges CSV", command=self.load_edges, width=20,
+               bg=self.current_theme["button_bg"], fg=self.current_theme["button_text_color"]).grid(row=1, column=1,
+                                                                                                    pady=5, sticky='ew')
+
+        Button(self.control_frame, text="Reset Data", command=self.reset_data, width=20,
+               bg=self.current_theme["error_color"], fg="white").grid(row=2, column=0, columnspan=2, pady=(10, 10),
+                                                                      sticky='ew')
+
+        Label(self.control_frame, text="Graph Type:", font=('Arial', 14),
+              bg=self.current_theme["bg_main"], fg=self.current_theme["text_color"]).grid(row=3, column=0, pady=5,
+                                                                                          sticky='w')
         self.graph_type = StringVar(value="undirected")
-        Radiobutton(control_frame, text="Undirected", variable=self.graph_type, value="undirected",
-                    command=self.on_graph_type_changed, bg="#f5f5f5").grid(row=4, column=0, sticky='w')
-        Radiobutton(control_frame, text="Directed", variable=self.graph_type, value="directed",
-                    command=self.on_graph_type_changed, bg="#f5f5f5").grid(row=4, column=1, sticky='w')
+        Radiobutton(self.control_frame, text="Undirected", variable=self.graph_type, value="undirected",
+                    command=self.on_graph_type_changed, bg=self.current_theme["bg_main"],
+                    fg=self.current_theme["text_color"], selectcolor=self.current_theme["bg_main"]).grid(row=4,
+                                                                                                         column=0,
+                                                                                                         sticky='w')
+        Radiobutton(self.control_frame, text="Directed", variable=self.graph_type, value="directed",
+                    command=self.on_graph_type_changed, bg=self.current_theme["bg_main"],
+                    fg=self.current_theme["text_color"], selectcolor=self.current_theme["bg_main"]).grid(row=4,
+                                                                                                         column=1,
+                                                                                                         sticky='w')
 
-        Label(control_frame, text="Visualization Options", font=('Arial', 16, 'bold'), bg="#f5f5f5").grid(row=5,
-                                                                                                          column=0,
-                                                                                                          columnspan=2,
-                                                                                                          pady=(20, 10),
-                                                                                                          sticky='w')
-
-        Label(control_frame, text="Node Shape Attribute:", bg="#f5f5f5").grid(row=6, column=0, pady=5, sticky='w')
-        self.node_shape_attr = ttk.Combobox(control_frame, values=["dot", "square", "triangle", "star"], width=18)
-        self.node_shape_attr.grid(row=6, column=1, pady=5, sticky='ew')
+        # Visualization Options
+        Label(self.control_frame, text="Visualization Options", font=('Arial', 16, 'bold'),
+              bg=self.current_theme["bg_main"], fg=self.current_theme["text_color"]).grid(row=5, column=0, columnspan=2,
+                                                                                          pady=(20, 10), sticky='w')
+        # Node Shape Attribute
+        self.node_shape_attr = self.create_combobox_with_label("Node Shape Attribute:",
+                                                               ["dot", "square", "triangle", "star"], 6)
         self.node_shape_attr.set("dot")
 
-        Label(control_frame, text="Edge Style:", bg="#f5f5f5").grid(row=7, column=0, pady=5, sticky='w')
-        self.edge_style_attr = ttk.Combobox(control_frame, values=["solid", "dashed", "dotted"], width=18)
-        self.edge_style_attr.grid(row=7, column=1, pady=5, sticky='ew')
+        # Edge Style
+        self.edge_style_attr = self.create_combobox_with_label("Edge Style:", ["solid", "dashed", "dotted"], 7)
         self.edge_style_attr.set("solid")
 
-        Label(control_frame, text="Layout Algorithm:", bg="#f5f5f5").grid(row=8, column=0, pady=5, sticky='w')
-        self.layout_algo = ttk.Combobox(control_frame, values=["force-directed", "hierarchical", "circular", "random"],
-                                        width=18)
-        self.layout_algo.grid(row=8, column=1, pady=5, sticky='ew')
+        # Layout Algorithm
+        self.layout_algo = self.create_combobox_with_label("Layout Algorithm:",
+                                                           ["force-directed", "hierarchical", "circular", "random"], 8)
         self.layout_algo.set("force-directed")
 
-        Label(control_frame, text="Node Size Attribute:", bg="#f5f5f5").grid(row=9, column=0, pady=5, sticky='w')
-        self.node_size_attr = ttk.Combobox(control_frame, width=18)
+        Label(self.control_frame, text="Node Size Attribute:", bg=self.current_theme["bg_main"],
+              fg=self.current_theme["text_color"]).grid(row=9, column=0, pady=5, sticky='w')
+        self.node_size_attr = ttk.Combobox(self.control_frame, width=18)
         self.node_size_attr.grid(row=9, column=1, pady=5, sticky='ew')
 
-        Label(control_frame, text="Node Color Attribute:", bg="#f5f5f5").grid(row=10, column=0, pady=5, sticky='w')
-        self.node_color_attr = ttk.Combobox(control_frame, width=18)
+        Label(self.control_frame, text="Node Color Attribute:", bg=self.current_theme["bg_main"],
+              fg=self.current_theme["text_color"]).grid(row=10, column=0, pady=5, sticky='w')
+        self.node_color_attr = ttk.Combobox(self.control_frame, width=18)
         self.node_color_attr.grid(row=10, column=1, pady=5, sticky='ew')
 
-        Label(control_frame, text="Link Analysis", font=('Arial', 16, 'bold'), bg="#f5f5f5").grid(row=11, column=0,
-                                                                                                  columnspan=2,
-                                                                                                  pady=(20, 10),
-                                                                                                  sticky='w')
-        Button(control_frame, text="Run PageRank", command=self.run_pagerank, width=20).grid(row=12, column=0,
-                                                                                             columnspan=2, pady=5,
-                                                                                             sticky='ew')
-        Button(control_frame, text="Run Betweenness", command=self.run_betweenness, width=20).grid(row=13, column=0,
-                                                                                                   columnspan=2, pady=5,
-                                                                                                   sticky='ew')
+        # Link Analysis
+        Label(self.control_frame, text="Link Analysis", font=('Arial', 16, 'bold'),
+              bg=self.current_theme["bg_main"], fg=self.current_theme["text_color"]).grid(row=11, column=0,
+                                                                                          columnspan=2, pady=(20, 10),
+                                                                                          sticky='w')
+        Button(self.control_frame, text="Run PageRank", command=self.run_pagerank, width=20,
+               bg=self.current_theme["button_bg"], fg=self.current_theme["button_text_color"]).grid(row=12, column=0,
+                                                                                                    columnspan=2,
+                                                                                                    pady=5, sticky='ew')
+        Button(self.control_frame, text="Run Betweenness", command=self.run_betweenness, width=20,
+               bg=self.current_theme["button_bg"], fg=self.current_theme["button_text_color"]).grid(row=13, column=0,
+                                                                                                    columnspan=2,
+                                                                                                    pady=5, sticky='ew')
 
-        Label(control_frame, text="Community Detection", font=('Arial', 16, 'bold'), bg="#f5f5f5").grid(row=14,
-                                                                                                        column=0,
-                                                                                                        columnspan=2,
-                                                                                                        pady=(20, 10),
-                                                                                                        sticky='w')
-        self.community_algo = ttk.Combobox(control_frame, values=["Louvain", "Girvan-Newman", "Both"], width=18)
-        self.community_algo.grid(row=15, column=0, columnspan=2, pady=5, sticky='ew')
-        Button(control_frame, text="Detect Communities", command=self.detect_communities, width=20).grid(row=16,
-                                                                                                         column=0,
-                                                                                                         columnspan=2,
-                                                                                                         pady=10,
-                                                                                                         sticky='ew')
+        # Community Detection
+        Label(self.control_frame, text="Community Detection", font=('Arial', 16, 'bold'),
+              bg=self.current_theme["bg_main"], fg=self.current_theme["text_color"]).grid(row=14, column=0,
+                                                                                          columnspan=2, pady=(20, 10),
+                                                                                          sticky='w')
+        self.community_algo = self.create_combobox_with_label(
+            "Community Algorithm:", ["Louvain", "Girvan-Newman", "Both"], 15
+        )
+        self.community_algo.set("Louvain")
+        Button(self.control_frame, text="Detect Communities", command=self.detect_communities, width=20,
+               bg=self.current_theme["button_bg"], fg=self.current_theme["button_text_color"]).grid(row=16, column=0,
+                                                                                                    columnspan=2,
+                                                                                                    pady=10,
+                                                                                                    sticky='ew')
 
-        Label(control_frame, text="Filtering Options", font=('Arial', 16, 'bold'), bg="#f5f5f5").grid(row=17, column=0,
-                                                                                                      columnspan=2,
-                                                                                                      pady=(20, 10),
-                                                                                                      sticky='w')
-        Label(control_frame, text="Filter by Community:", bg="#f5f5f5").grid(row=18, column=0, pady=5, sticky='w')
-        self.selected_community = ttk.Combobox(control_frame, values=self.get_community_list(), width=18)
-        self.selected_community.grid(row=18, column=1, pady=5, sticky='ew')
-        Button(control_frame, text="Apply Community Filter", command=self.apply_community_filter, width=20).grid(row=19,
-                                                                                                                 column=0,
-                                                                                                                 columnspan=2,
-                                                                                                                 pady=5,
-                                                                                                                 sticky='ew')
+        # Filtering
+        Label(self.control_frame, text="Filtering Options", font=('Arial', 16, 'bold'),
+              bg=self.current_theme["bg_main"], fg=self.current_theme["text_color"]).grid(row=17, column=0,
+                                                                                          columnspan=2, pady=(20, 10),
+                                                                                          sticky='w')
 
-        Label(control_frame, text="Filter by Centrality:", bg="#f5f5f5").grid(row=20, column=0, pady=5, sticky='w')
-        self.centrality_type = ttk.Combobox(control_frame, values=["degree", "betweenness", "eigenvector"], width=18)
-        self.centrality_type.grid(row=20, column=1, pady=5, sticky='ew')
+        self.selected_community = self.create_combobox_with_label("Filter by Community:", self.get_community_list(), 18)
+        Button(self.control_frame, text="Apply Community Filter", command=self.apply_community_filter, width=20,
+               bg=self.current_theme["button_bg"], fg=self.current_theme["button_text_color"]).grid(row=19, column=0,
+                                                                                                    columnspan=2,
+                                                                                                    pady=5, sticky='ew')
 
-        Label(control_frame, text="Min Value:", bg="#f5f5f5").grid(row=21, column=0, pady=5, sticky='w')
-        self.min_centrality = Entry(control_frame, width=18)
+        self.centrality_type = self.create_combobox_with_label("Filter by Centrality:", ["degree", "betweenness", "eigenvector"], 20)
+
+        Label(self.control_frame, text="Min Value:", bg=self.current_theme["bg_main"],
+              fg=self.current_theme["text_color"]).grid(row=21, column=0, pady=5, sticky='w')
+        self.min_centrality = Entry(self.control_frame, width=18)
         self.min_centrality.grid(row=21, column=1, pady=5, sticky='ew')
 
-        Label(control_frame, text="Max Value:", bg="#f5f5f5").grid(row=22, column=0, pady=5, sticky='w')
-        self.max_centrality = Entry(control_frame, width=18)
+        Label(self.control_frame, text="Max Value:", bg=self.current_theme["bg_main"],
+              fg=self.current_theme["text_color"]).grid(row=22, column=0, pady=5, sticky='w')
+        self.max_centrality = Entry(self.control_frame, width=18)
         self.max_centrality.grid(row=22, column=1, pady=5, sticky='ew')
 
-        Button(control_frame, text="Apply Centrality Filter", command=self.apply_centrality_filter, width=20).grid(
-            row=23, column=0, columnspan=2, pady=10, sticky='ew')
+        Button(self.control_frame, text="Apply Centrality Filter", command=self.apply_centrality_filter, width=20,
+               bg=self.current_theme["button_bg"], fg=self.current_theme["button_text_color"]).grid(row=23, column=0,
+                                                                                                    columnspan=2,
+                                                                                                    pady=10,
+                                                                                                    sticky='ew')
 
-        Button(control_frame, text="Visualize Network", command=self.visualize_network, bg="#4CAF50", fg="white",
-               font=('Arial', 12, 'bold')).grid(row=24, column=0, columnspan=2, pady=20, sticky='ew')
+        # Visualize Network
+        Button(self.control_frame, text="Visualize Network", command=self.visualize_network,
+               bg=self.current_theme["button_bg"], fg="white", font=('Arial', 12, 'bold')).grid(row=24, column=0,
+                                                                                                columnspan=2, pady=20,
+                                                                                                sticky='ew')
 
-        # --------- Metrics Display ---------
+        # Metrics Display
         self.metrics_text = Text(
-            visualization_frame,
+            self.visualization_frame,
             width=80,
             height=30,
-            bg="white",
-            fg="#333333",
+            bg=self.current_theme["bg_secondary"],
+            fg=self.current_theme["text_color"],
             font=('Arial', 12),
             wrap="word",
             padx=10,
             pady=10,
             bd=1,
-            relief="solid"
+            highlightbackground="white" if self.current_theme == self.dark_theme else "black",
+            highlightthickness=1,
         )
         self.metrics_text.pack(expand=True, fill=BOTH, padx=10, pady=10)
+
+    def create_combobox_with_label(self, label_text, values, row_num):
+        Label(self.control_frame, text=label_text, bg=self.current_theme["bg_main"],
+              fg=self.current_theme["text_color"]).grid(row=row_num, column=0, pady=5, sticky='w')
+        combobox = ttk.Combobox(self.control_frame, values=values, width=18)
+        combobox.grid(row=row_num, column=1, pady=5, sticky='ew')
+        return combobox
+
+    def toggle_theme(self):
+        # Switch between light and dark themes based on Checkbutton state
+        if self.current_theme == self.dark_theme:
+            self.current_theme = self.light_theme
+        else:
+            self.current_theme = self.dark_theme
+
+        # Update UI elements with the new theme colors
+        self.update_ui_theme()
+
+    def update_ui_theme(self):
+        # Update the main frame background color
+        self.main_frame.config(bg=self.current_theme["bg_main"])
+
+        # Update the canvas and scrollbar
+        self.canvas.config(bg=self.current_theme["bg_main"])
+        self.scrollbar.config(bg=self.current_theme["bg_main"])
+
+        # Update the control frame and its widgets (except ComboBox, input fields, and reset button)
+        self.control_frame.config(bg=self.current_theme["bg_main"])
+        for widget in self.control_frame.winfo_children():
+            if isinstance(widget, Label):
+                widget.config(bg=self.current_theme["bg_main"], fg=self.current_theme["text_color"])
+            elif isinstance(widget, Button) and widget.cget("text") != "Reset Data":  # Exclude reset button
+                widget.config(bg=self.current_theme["button_bg"],
+                              fg=self.current_theme["button_text_color"])
+            elif isinstance(widget, Checkbutton):
+                widget.config(bg=self.current_theme["bg_main"], fg=self.current_theme["text_color"],
+                              selectcolor=self.current_theme["button_bg"])
+            elif isinstance(widget, Radiobutton):  # Update Radiobutton background as well
+                widget.config(bg=self.current_theme["bg_main"], fg=self.current_theme["text_color"],
+                              selectcolor=self.current_theme["bg_main"])
+
+        # Update the visualization frame
+        self.visualization_frame.config(bg=self.current_theme["bg_secondary"])
+
+        # Update the text area background and text color
+        self.metrics_text.config(bg=self.current_theme["bg_secondary"], fg=self.current_theme["text_color"])
+
+        # Update the theme toggle button (Checkbutton)
+        self.theme_toggle.config(bg=self.current_theme["bg_main"], fg=self.current_theme["text_color"],
+                                 selectcolor=self.current_theme["button_bg"])
+
+        # Update the title_frame background color and the Label inside it
+        self.title_frame.config(bg=self.current_theme["bg_main"])
+        for widget in self.title_frame.winfo_children():
+            if isinstance(widget, Label):
+                widget.config(bg=self.current_theme["bg_main"], fg=self.current_theme["text_color"])
 
     def on_graph_type_changed(self):
         self.current_graph_type = self.graph_type.get()
@@ -233,6 +338,13 @@ class SocialNetworkAnalyzer:
                     df['weight'] = 1
 
                 df = df.groupby(['source', 'target'], as_index=False).agg({'weight': 'sum'})
+
+                # Handle undirected vs directed graphs for edge attributes
+                if self.graph_type.get() == "undirected":
+                    # Sort source and target to ensure consistent order
+                    df[['source', 'target']] = df.apply(lambda x: sorted([x['source'], x['target']]), axis=1, result_type='expand')
+                    # Regroup after sorting
+                    df = df.groupby(['source', 'target'], as_index=False).agg({'weight': 'sum'})
 
                 # Create original graphs
                 self.original_graph = nx.from_pandas_edgelist(df, source='source', target='target', edge_attr=True)
@@ -389,9 +501,16 @@ class SocialNetworkAnalyzer:
             # Add edges with attributes
             for edge in g.edges():
                 edge_attrs = {}
+                u, v = edge
 
-                if self.edge_attributes and edge in self.edge_attributes:
-                    for attr, value in self.edge_attributes[edge].items():
+                # Check both edge directions for undirected graphs
+                if self.current_graph_type == "undirected":
+                    key = (u, v) if (u, v) in self.edge_attributes else (v, u)
+                else:
+                    key = (u, v)
+
+                if key in self.edge_attributes:
+                    for attr, value in self.edge_attributes[key].items():
                         edge_attrs[attr] = value
                         if attr == "style":
                             edge_attrs["dashes"] = True if value == "dashed" else False
@@ -583,7 +702,10 @@ class SocialNetworkAnalyzer:
             if algo == "Girvan-Newman" or algo == "Both":
                 comp = girvan_newman(g)
                 girvan_communities = tuple(sorted(c) for c in next(comp))
-                girvan_edges_removed = len(g.edges()) - len(girvan_communities)  # Number of edges removed
+                # Calculate edges removed
+                original_edges = len(g.edges())
+                remaining_edges = sum(g.subgraph(comm).number_of_edges() for comm in girvan_communities)
+                girvan_edges_removed = original_edges - remaining_edges
 
             # Display comparison results in GUI
             self.metrics_text.insert(END, "\nCommunity Detection Comparison:\n")
