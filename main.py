@@ -36,7 +36,7 @@ class SocialNetworkAnalyzer:
         main_frame.pack(side=LEFT, fill=Y, expand=True)
 
         # Scrollbar and canvas for scrolling
-        canvas = Canvas(main_frame)
+        canvas = Canvas(main_frame, bg="#f5f5f5", highlightthickness=0)
         scrollbar = Scrollbar(main_frame, orient="vertical", command=canvas.yview)
         canvas.configure(yscrollcommand=scrollbar.set)
 
@@ -49,126 +49,122 @@ class SocialNetworkAnalyzer:
 
         control_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
-        visualization_frame = Frame(self.root, padx=10, pady=10)
+        visualization_frame = Frame(self.root, padx=10, pady=10, bg="white")
         visualization_frame.pack(side=RIGHT, expand=True, fill=BOTH)
 
         # Load data section
-        Label(control_frame, text="Load Network Data", font=('Arial', 14, 'bold'), bg="#f5f5f5").grid(row=0, column=0,
+        Label(control_frame, text="Load Network Data", font=('Arial', 16, 'bold'), bg="#f5f5f5").grid(row=0, column=0,
                                                                                                       columnspan=2,
-                                                                                                      pady=10,
+                                                                                                      pady=(0, 15),
                                                                                                       sticky='w')
-        Button(control_frame, text="Load Nodes CSV", command=self.load_nodes, relief="raised", width=20).grid(row=1,
-                                                                                                              column=0,
-                                                                                                              pady=10,
-                                                                                                              sticky='ew')
-        Button(control_frame, text="Load Edges CSV", command=self.load_edges, relief="raised", width=20).grid(row=1,
-                                                                                                              column=1,
-                                                                                                              pady=10,
-                                                                                                              sticky='ew')
+        Button(control_frame, text="Load Nodes CSV", command=self.load_nodes, width=20).grid(row=1, column=0, pady=5,
+                                                                                             sticky='ew')
+        Button(control_frame, text="Load Edges CSV", command=self.load_edges, width=20).grid(row=1, column=1, pady=5,
+                                                                                             sticky='ew')
+
         # Reset button
-        Button(control_frame, text="Reset Data", command=self.reset_data, relief="raised", width=20).grid(row=2, column=0, columnspan=2, pady=5, sticky='ew')
+        Button(control_frame, text="Reset Data", command=self.reset_data, width=20, bg="#ff4d4d", fg="white").grid(
+            row=2, column=0, columnspan=2, pady=(10, 20), sticky='ew')
 
         # Graph type selection
-        Label(control_frame, text="Graph Type:", font=('Arial', 12), bg="#f5f5f5").grid(row=3, column=0, pady=10,
+        Label(control_frame, text="Graph Type:", font=('Arial', 14), bg="#f5f5f5").grid(row=3, column=0, pady=5,
                                                                                         sticky='w')
         self.graph_type = StringVar(value="undirected")
-        Radiobutton(control_frame, text="Undirected", variable=self.graph_type, value="undirected", relief="solid",
-                    width=15, command=self.on_graph_type_changed).grid(row=4, column=0, pady=5, sticky='ew')
-        Radiobutton(control_frame, text="Directed", variable=self.graph_type, value="directed", relief="solid",
-                    width=15, command=self.on_graph_type_changed).grid(row=4, column=1, pady=5, sticky='ew')
+        Radiobutton(control_frame, text="Undirected", variable=self.graph_type, value="undirected",
+                    command=self.on_graph_type_changed, bg="#f5f5f5").grid(row=4, column=0, sticky='w')
+        Radiobutton(control_frame, text="Directed", variable=self.graph_type, value="directed",
+                    command=self.on_graph_type_changed, bg="#f5f5f5").grid(row=4, column=1, sticky='w')
 
-        # Visualization options section
-        Label(control_frame, text="Visualization Options", font=('Arial', 14, 'bold'), bg="#f5f5f5").grid(row=5,
+        # Visualization options
+        Label(control_frame, text="Visualization Options", font=('Arial', 16, 'bold'), bg="#f5f5f5").grid(row=5,
                                                                                                           column=0,
                                                                                                           columnspan=2,
-                                                                                                          pady=15,
+                                                                                                          pady=(20, 10),
                                                                                                           sticky='w')
 
-        # Node Shape Selection
-        Label(control_frame, text="Node Shape Attribute:", bg="#f5f5f5").grid(row=6, column=0, pady=10, sticky='w')
+        Label(control_frame, text="Node Shape Attribute:", bg="#f5f5f5").grid(row=6, column=0, pady=5, sticky='w')
         self.node_shape_attr = ttk.Combobox(control_frame, values=["dot", "square", "triangle", "star"], width=18)
-        self.node_shape_attr.grid(row=6, column=1, pady=10, sticky='ew')
+        self.node_shape_attr.grid(row=6, column=1, pady=5, sticky='ew')
         self.node_shape_attr.set("dot")
 
-        # Edge Style Selection
-        Label(control_frame, text="Edge Style:", bg="#f5f5f5").grid(row=7, column=0, pady=10, sticky='w')
+        Label(control_frame, text="Edge Style:", bg="#f5f5f5").grid(row=7, column=0, pady=5, sticky='w')
         self.edge_style_attr = ttk.Combobox(control_frame, values=["solid", "dashed", "dotted"], width=18)
-        self.edge_style_attr.grid(row=7, column=1, pady=10, sticky='ew')
+        self.edge_style_attr.grid(row=7, column=1, pady=5, sticky='ew')
         self.edge_style_attr.set("solid")
 
-        # Layout algorithms
-        Label(control_frame, text="Layout Algorithm:", bg="#f5f5f5").grid(row=8, column=0, pady=10, sticky='w')
+        Label(control_frame, text="Layout Algorithm:", bg="#f5f5f5").grid(row=8, column=0, pady=5, sticky='w')
         self.layout_algo = ttk.Combobox(control_frame, values=["force-directed", "hierarchical", "circular", "random"],
                                         width=18)
-        self.layout_algo.grid(row=8, column=1, pady=10, sticky='ew')
+        self.layout_algo.grid(row=8, column=1, pady=5, sticky='ew')
         self.layout_algo.set("force-directed")
 
-        # Node size and color attributes
-        Label(control_frame, text="Node Size Attribute:", bg="#f5f5f5").grid(row=9, column=0, pady=10, sticky='w')
+        Label(control_frame, text="Node Size Attribute:", bg="#f5f5f5").grid(row=9, column=0, pady=5, sticky='w')
         self.node_size_attr = ttk.Combobox(control_frame, width=18)
-        self.node_size_attr.grid(row=9, column=1, pady=10, sticky='ew')
+        self.node_size_attr.grid(row=9, column=1, pady=5, sticky='ew')
 
-        Label(control_frame, text="Node Color Attribute:", bg="#f5f5f5").grid(row=10, column=0, pady=10, sticky='w')
+        Label(control_frame, text="Node Color Attribute:", bg="#f5f5f5").grid(row=10, column=0, pady=5, sticky='w')
         self.node_color_attr = ttk.Combobox(control_frame, width=18)
-        self.node_color_attr.grid(row=10, column=1, pady=10, sticky='ew')
+        self.node_color_attr.grid(row=10, column=1, pady=5, sticky='ew')
 
-        # Community detection section
-        Label(control_frame, text="Community Detection", font=('Arial', 14, 'bold'), bg="#f5f5f5").grid(row=11,
+        # Link Analysis section
+        Label(control_frame, text="Link Analysis", font=('Arial', 16, 'bold'), bg="#f5f5f5").grid(row=11, column=0,
+                                                                                                  columnspan=2,
+                                                                                                  pady=(20, 10),
+                                                                                                  sticky='w')
+        Button(control_frame, text="Run PageRank", command=self.run_pagerank, width=20).grid(row=12, column=0,
+                                                                                             columnspan=2, pady=5,
+                                                                                             sticky='ew')
+        Button(control_frame, text="Run Betweenness", command=self.run_betweenness, width=20).grid(row=13, column=0,
+                                                                                                   columnspan=2, pady=5,
+                                                                                                   sticky='ew')
+
+        # Community Detection section
+        Label(control_frame, text="Community Detection", font=('Arial', 16, 'bold'), bg="#f5f5f5").grid(row=14,
                                                                                                         column=0,
                                                                                                         columnspan=2,
-                                                                                                        pady=15,
+                                                                                                        pady=(20, 10),
                                                                                                         sticky='w')
+        self.community_algo = ttk.Combobox(control_frame, values=["Louvain", "Girvan-Newman", "Both"], width=18)
+        self.community_algo.grid(row=15, column=0, columnspan=2, pady=5, sticky='ew')
+        Button(control_frame, text="Detect Communities", command=self.detect_communities, width=20).grid(row=16,
+                                                                                                         column=0,
+                                                                                                         columnspan=2,
+                                                                                                         pady=10,
+                                                                                                         sticky='ew')
 
-        self.community_algo = ttk.Combobox(control_frame, values=["Louvain", "Girvan-Newman","Both"], width=18)
-        self.community_algo.grid(row=12, column=0, columnspan=2, pady=10, sticky='ew')
-
-        Button(control_frame, text="Detect Communities", command=self.detect_communities, relief="raised",
-               width=20).grid(row=13, column=0, columnspan=2, pady=15, sticky='ew')
-
-        # Filtering options section
-        Label(control_frame, text="Filtering Options", font=('Arial', 14, 'bold'), bg="#f5f5f5").grid(row=14, column=0,
+        # Filtering options
+        Label(control_frame, text="Filtering Options", font=('Arial', 16, 'bold'), bg="#f5f5f5").grid(row=17, column=0,
                                                                                                       columnspan=2,
-                                                                                                      pady=15,
+                                                                                                      pady=(20, 10),
                                                                                                       sticky='w')
 
-        Label(control_frame, text="Filter by Centrality:", bg="#f5f5f5").grid(row=15, column=0, pady=10, sticky='w')
-        self.centrality_type = ttk.Combobox(control_frame, values=["degree", "betweenness", "eigenvector"], width=18)
-        self.centrality_type.grid(row=15, column=1, pady=10, sticky='ew')
-
-        Label(control_frame, text="Min Value:", bg="#f5f5f5").grid(row=16, column=0, pady=10, sticky='w')
-        self.min_centrality = Entry(control_frame, width=18)
-        self.min_centrality.grid(row=16, column=1, pady=10, sticky='ew')
-
-        Label(control_frame, text="Max Value:", bg="#f5f5f5").grid(row=17, column=0, pady=10, sticky='w')
-        self.max_centrality = Entry(control_frame, width=18)
-        self.max_centrality.grid(row=17, column=1, pady=10, sticky='ew')
-
-        # Community filtering section
-        Label(control_frame, text="Filter by Community:", bg="#f5f5f5").grid(row=18, column=0, pady=10, sticky='w')
+        Label(control_frame, text="Filter by Community:", bg="#f5f5f5").grid(row=18, column=0, pady=5, sticky='w')
         self.selected_community = ttk.Combobox(control_frame, values=self.get_community_list(), width=18)
-        self.selected_community.grid(row=18, column=1, pady=10, sticky='ew')
+        self.selected_community.grid(row=18, column=1, pady=5, sticky='ew')
+        Button(control_frame, text="Apply Community Filter", command=self.apply_community_filter, width=20).grid(row=19,
+                                                                                                                 column=0,
+                                                                                                                 columnspan=2,
+                                                                                                                 pady=5,
+                                                                                                                 sticky='ew')
 
-        Button(control_frame, text="Apply Centrality Filter", command=self.apply_centrality_filter, relief="raised",
-               width=20).grid(row=19, column=0, columnspan=2, pady=15, sticky='ew')
-        Button(control_frame, text="Apply Community Filter", command=self.apply_community_filter, relief="raised",
-               width=20).grid(row=20, column=0, columnspan=2, pady=15, sticky='ew')
+        Label(control_frame, text="Filter by Centrality:", bg="#f5f5f5").grid(row=20, column=0, pady=5, sticky='w')
+        self.centrality_type = ttk.Combobox(control_frame, values=["degree", "betweenness", "eigenvector"], width=18)
+        self.centrality_type.grid(row=20, column=1, pady=5, sticky='ew')
 
-        # Link analysis section
-        Label(control_frame, text="Link Analysis", font=('Arial', 14, 'bold'), bg="#f5f5f5").grid(row=21, column=0,
-                                                                                                  columnspan=2, pady=15,
-                                                                                                  sticky='w')
+        Label(control_frame, text="Min Value:", bg="#f5f5f5").grid(row=21, column=0, pady=5, sticky='w')
+        self.min_centrality = Entry(control_frame, width=18)
+        self.min_centrality.grid(row=21, column=1, pady=5, sticky='ew')
 
-        Button(control_frame, text="Run PageRank", command=self.run_pagerank, relief="raised", width=20).grid(row=22,
-                                                                                                              column=0,
-                                                                                                              columnspan=2,
-                                                                                                              pady=10,
-                                                                                                              sticky='ew')
-        Button(control_frame, text="Run Betweenness", command=self.run_betweenness, relief="raised", width=20).grid(
+        Label(control_frame, text="Max Value:", bg="#f5f5f5").grid(row=22, column=0, pady=5, sticky='w')
+        self.max_centrality = Entry(control_frame, width=18)
+        self.max_centrality.grid(row=22, column=1, pady=5, sticky='ew')
+
+        Button(control_frame, text="Apply Centrality Filter", command=self.apply_centrality_filter, width=20).grid(
             row=23, column=0, columnspan=2, pady=10, sticky='ew')
 
         # Visualize button
         Button(control_frame, text="Visualize Network", command=self.visualize_network, bg="#4CAF50", fg="white",
-               relief="raised", font=('Arial', 12, 'bold')).grid(row=24, column=0, columnspan=2, pady=20, sticky='ew')
+               font=('Arial', 12, 'bold')).grid(row=24, column=0, columnspan=2, pady=20, sticky='ew')
 
         # Metrics display
         self.metrics_text = Text(visualization_frame, width=80, height=30, bg="#f0f0f0", font=('Arial', 10))
