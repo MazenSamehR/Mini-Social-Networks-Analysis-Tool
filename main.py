@@ -319,22 +319,6 @@ class SocialNetworkAnalyzer:
                           directed=(self.current_graph_type == "directed"),
                           cdn_resources='remote')
 
-            # Configure arrow display for directed graphs
-            if self.current_graph_type == "directed":
-                net.set_options("""
-                {
-                  "edges": {
-                    "arrows": {
-                      "to": {
-                        "enabled": true,
-                        "scaleFactor": 1.5
-                      }
-                    },
-                    "smooth": false
-                  }
-                }
-                """)
-
             # Add nodes with attributes
             for node in g.nodes():
                 node_attrs = {"label": str(node), "title": str(node)}
@@ -386,14 +370,19 @@ class SocialNetworkAnalyzer:
                 else:
                     edge_attrs["dashes"] = False
 
+                # Add arrow configuration for directed graphs
+                if self.current_graph_type == "directed":
+                    edge_attrs["arrows"] = "to"
+                    edge_attrs["smooth"] = False
+
                 net.add_edge(edge[0], edge[1], **edge_attrs)
 
             # Apply layout
             layout = self.layout_algo.get()
             if layout == "force-directed":
-                net.force_atlas_2based()
+                net.force_atlas_2based(gravity=-50)
             elif layout == "hierarchical":
-                net.hrepulsion()
+                net.hierarchical_layout()
 
             # Save and show
             output_file = "network_visualization.html"
