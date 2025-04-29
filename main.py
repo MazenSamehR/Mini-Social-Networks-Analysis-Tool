@@ -504,36 +504,40 @@ class SocialNetworkAnalyzer:
             return
 
         try:
+            # Create network with full viewport height
+            net = Network(
+                notebook=True,
+                height="100vh",
+                width="100%",
+                directed=(self.current_graph_type == "directed"),
+                cdn_resources='remote',
+                bgcolor=self.current_theme["bg_secondary"],
+                font_color=self.current_theme["text_color"]
+            )
 
-            net = Network(notebook=True, height="750px", width="100%",
-                          directed=(self.current_graph_type == "directed"),
-                          cdn_resources='remote')
-
-
+            # Add nodes (same as before)
             for node in g.nodes():
-
                 label_attr = self.node_label_attr.get()
-                if label_attr == 'id':
-                    node_label = str(node)
-                else:
-                    node_label = str(self.node_attributes.get(node, {}).get(label_attr, node))
+                node_label = str(node) if label_attr == 'id' else str(
+                    self.node_attributes.get(node, {}).get(label_attr, node))
 
-                node_attrs = {"label": node_label, "title": str(node)}
+                node_attrs = {
+                    "id": str(node),  # Ensure ID is string
+                    "label": node_label,
+                    "title": str(node),
+                    "borderWidth": 1,
+                    "shadow": True
+                }
 
                 if self.node_attributes and node in self.node_attributes:
                     for attr, value in self.node_attributes[node].items():
                         node_attrs[attr] = value
-
                         if attr == self.node_size_attr.get():
                             node_attrs["size"] = float(value) * 2 if str(value).replace('.', '').isdigit() else 10
                         if attr == self.node_color_attr.get():
                             node_attrs["color"] = self.value_to_color(value)
                         if attr == "shape":
-                            if value in ['dot', 'square', 'triangle', 'star']:
-                                node_attrs["shape"] = value
-                            else:
-                                node_attrs["shape"] = 'dot'
-
+                            node_attrs["shape"] = value if value in ['dot', 'square', 'triangle', 'star'] else 'dot'
 
                 selected_shape = self.node_shape_attr.get()
                 if selected_shape in ['dot', 'square', 'triangle', 'star']:
@@ -541,46 +545,52 @@ class SocialNetworkAnalyzer:
                 else:
                     node_attrs["shape"] = 'dot'
 
-                net.add_node(node, **node_attrs)
+                net.add_node(node_attrs["id"], **node_attrs)
 
+            # Add edges with corrected attribute handling
+            added_edges = set()
             for edge in g.edges():
-                edge_attrs = {}
-                u, v = edge
-
+                u, v = map(str, edge)  # Convert both nodes to strings
 
                 if self.current_graph_type == "undirected":
-                    key = (u, v) if (u, v) in self.edge_attributes else (v, u)
-                else:
-                    key = (u, v)
+                    edge_key = frozenset({u, v})
+                    if edge_key in added_edges:
+                        continue
+                    added_edges.add(edge_key)
+                    u, v = sorted((u, v))  # Consistent order for undirected
 
+                # Get edge attributes
+                edge_attrs = {}
+                key = (u, v) if (u, v) in self.edge_attributes else (v, u)
                 if key in self.edge_attributes:
                     for attr, value in self.edge_attributes[key].items():
-                        edge_attrs[attr] = value
                         if attr == "style":
-                            edge_attrs["dashes"] = True if value == "dashed" else False
-                        if attr == "weight":
+                            edge_attrs["dashes"] = value == "dashed"
+                        elif attr == "weight":
                             edge_attrs["width"] = float(value) / 10 if value else 1
-                        if attr == "color":
+                        elif attr == "color":
                             edge_attrs["color"] = self.value_to_color(value)
-                        if attr == "width":
+                        elif attr == "width":
                             edge_attrs["width"] = float(value)
 
+                # Apply selected edge style
                 selected_style = self.edge_style_attr.get()
                 if selected_style == "dashed":
                     edge_attrs["dashes"] = True
                 elif selected_style == "dotted":
                     edge_attrs["dashes"] = [2, 5]
-                else:
-                    edge_attrs["dashes"] = False
 
-
+                # Direction handling
                 if self.current_graph_type == "directed":
                     edge_attrs["arrows"] = "to"
                     edge_attrs["smooth"] = False
+                else:
+                    edge_attrs["smooth"] = {"type": "continuous"}
 
-                net.add_edge(edge[0], edge[1], **edge_attrs)
+                # Add edge without duplicating 'to' in attributes
+                net.add_edge(u, v, **edge_attrs)
 
-
+            # [Rest of your layout configuration remains the same...]
             layout = self.layout_algo.get()
             if layout == "force-directed":
                 net.force_atlas_2based(gravity=-50)
@@ -591,7 +601,9 @@ class SocialNetworkAnalyzer:
                         "hierarchical": {
                             "enabled": true,
                             "direction": "UD",
-                            "sortMethod": "directed"
+                            "sortMethod": "directed",
+                            "nodeSpacing": 150,
+                            "levelSeparation": 200
                         }
                     }
                 }
@@ -600,19 +612,7 @@ class SocialNetworkAnalyzer:
                 net.set_options("""
                 {
                     "layout": {
-                        "randomSeed": 42,
-                        "improvedLayout": false
-                    },
-                    "physics": {
-                        "hierarchicalRepulsion": {
-                            "centralGravity": 0.0,
-                            "springLength": 200,
-                            "springConstant": 0.01,
-                            "nodeDistance": 100,
-                            "damping": 0.09
-                        },
-                        "minVelocity": 0.75,
-                        "solver": "repulsion"
+                        "randomSeed": 42
                     }
                 }
                 """)
@@ -625,9 +625,9 @@ class SocialNetworkAnalyzer:
                 }
                 """)
 
-
+            # Generate and show visualization
             output_file = "network_visualization.html"
-            net.show(output_file)
+            net.save_graph(output_file)
             webbrowser.open('file://' + os.path.realpath(output_file))
 
         except Exception as e:
