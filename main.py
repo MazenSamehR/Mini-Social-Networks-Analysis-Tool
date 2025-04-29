@@ -1,3 +1,5 @@
+import json
+import math
 import os
 import hashlib
 import warnings
@@ -133,7 +135,7 @@ class SocialNetworkAnalyzer:
 
         # Layout Algorithm
         self.layout_algo = self.create_combobox_with_label("Layout Algorithm:",
-                                                           ["force-directed", "hierarchical", "circular", "random"], 8)
+                                                           ["force-directed", "tree", "radial"], 8)
         self.layout_algo.set("force-directed")
 
         # Node Label Attribute
@@ -590,11 +592,10 @@ class SocialNetworkAnalyzer:
                 # Add edge without duplicating 'to' in attributes
                 net.add_edge(u, v, **edge_attrs)
 
-            # [Rest of your layout configuration remains the same...]
+            # Layout configuration
             layout = self.layout_algo.get()
-            if layout == "force-directed":
-                net.force_atlas_2based(gravity=-50)
-            elif layout == "hierarchical":
+
+            if layout == "tree":
                 net.set_options("""
                 {
                     "layout": {
@@ -603,27 +604,47 @@ class SocialNetworkAnalyzer:
                             "direction": "UD",
                             "sortMethod": "directed",
                             "nodeSpacing": 150,
-                            "levelSeparation": 200
+                            "levelSeparation": 150
                         }
+                    },
+                    "physics": {
+                        "hierarchicalRepulsion": {
+                            "nodeDistance": 120
+                        },
+                        "minVelocity": 0.75,
+                        "solver": "hierarchicalRepulsion"
                     }
                 }
                 """)
-            elif layout == "circular":
-                net.set_options("""
-                {
-                    "layout": {
-                        "randomSeed": 42
-                    }
-                }
-                """)
-            elif layout == "random":
-                net.set_options("""
-                {
-                    "layout": {
-                        "randomSeed": 42
-                    }
-                }
-                """)
+            elif layout == "radial":
+                if len(net.nodes) > 0:
+                    center_node = net.nodes[0]['id']
+                    net.set_options(f"""
+                    {{
+                        "layout": {{
+                            "hierarchical": {{
+                                "enabled": true,
+                                "direction": "radial",
+                                "nodeSpacing": 150,
+                                "levelSeparation": 150
+                            }}
+                        }},
+                        "physics": {{
+                            "minVelocity": 0.75,
+                            "solver": "hierarchicalRepulsion"
+                        }}
+                    }}
+                    """)
+            else:  # force-directed (default)
+                # Use pyvis's built-in force-directed layout with default parameters
+                net.force_atlas_2based(
+                    gravity=-50,
+                    central_gravity=0.01,
+                    spring_length=100,
+                    spring_strength=0.08,
+                    damping=0.4,
+                    overlap=0.1
+                )
 
             # Generate and show visualization
             output_file = "network_visualization.html"
@@ -940,6 +961,9 @@ class SocialNetworkAnalyzer:
 
         except Exception as e:
             messagebox.showerror("Error", f"Betweenness centrality calculation failed: {str(e)}")
+
+
+
 
 
 if __name__ == "__main__":
