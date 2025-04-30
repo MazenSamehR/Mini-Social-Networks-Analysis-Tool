@@ -240,7 +240,16 @@ function highlightFilter(filter) {
 
              
         </style>
-    </head>
+    
+                        <style>                           
+
+                            /* All navigation buttons */
+                            .vis-navigation .vis-button {
+                                background-color: #BB86FC !important;
+                            }
+                          
+                        </style>
+                        </head>
 
 
     <body>
@@ -282,8 +291,8 @@ function highlightFilter(filter) {
                   
 
                   // parsing and collecting nodes and edges from the python
-                  nodes = new vis.DataSet([{"age": 28, "borderWidth": 1, "color": "hsl(27, 83%, 43%)", "font": {"color": "#F5F5F5"}, "gender": "F", "id": "1", "label": "1", "name": "Alice", "occupation": "Data Scientist", "shadow": true, "shape": "dot", "size": 10, "title": "1"}, {"age": 32, "borderWidth": 1, "color": "hsl(265, 96%, 56%)", "font": {"color": "#F5F5F5"}, "gender": "M", "id": "2", "label": "2", "name": "Bob", "occupation": "Engineer", "shadow": true, "shape": "dot", "size": 10, "title": "2"}, {"age": 24, "borderWidth": 1, "color": "hsl(152, 88%, 48%)", "font": {"color": "#F5F5F5"}, "gender": "M", "id": "3", "label": "3", "name": "Charlie", "occupation": "Student", "shadow": true, "shape": "dot", "size": 10, "title": "3"}, {"age": 30, "borderWidth": 1, "color": "hsl(244, 99%, 59%)", "font": {"color": "#F5F5F5"}, "gender": "F", "id": "5", "label": "5", "name": "Eve", "occupation": "Researcher", "shadow": true, "shape": "dot", "size": 10, "title": "5"}, {"age": 45, "borderWidth": 1, "color": "hsl(58, 96%, 56%)", "font": {"color": "#F5F5F5"}, "gender": "M", "id": "4", "label": "4", "name": "David", "occupation": "Professor", "shadow": true, "shape": "dot", "size": 10, "title": "4"}, {"age": 35, "borderWidth": 1, "color": "hsl(85, 84%, 44%)", "font": {"color": "#F5F5F5"}, "gender": "M", "id": "7", "label": "7", "name": "George", "occupation": "Manager", "shadow": true, "shape": "dot", "size": 10, "title": "7"}, {"age": 27, "borderWidth": 1, "color": "hsl(225, 83%, 43%)", "font": {"color": "#F5F5F5"}, "gender": "F", "id": "6", "label": "6", "name": "Fiona", "occupation": "Designer", "shadow": true, "shape": "dot", "size": 10, "title": "6"}, {"age": 40, "borderWidth": 1, "color": "hsl(5, 100%, 60%)", "font": {"color": "#F5F5F5"}, "gender": "M", "id": "9", "label": "9", "name": "Ian", "occupation": "Director", "shadow": true, "shape": "dot", "size": 10, "title": "9"}, {"age": 29, "borderWidth": 1, "color": "hsl(326, 85%, 45%)", "font": {"color": "#F5F5F5"}, "gender": "F", "id": "8", "label": "8", "name": "Hannah", "occupation": "Developer", "shadow": true, "shape": "dot", "size": 10, "title": "8"}, {"age": 31, "borderWidth": 1, "color": "hsl(298, 87%, 47%)", "font": {"color": "#F5F5F5"}, "gender": "F", "id": "10", "label": "10", "name": "Jane", "occupation": "Analyst", "shadow": true, "shape": "dot", "size": 10, "title": "10"}]);
-                  edges = new vis.DataSet([{"from": "1", "smooth": {"type": "continuous"}, "to": "2"}, {"from": "1", "smooth": {"type": "continuous"}, "to": "3"}, {"from": "1", "smooth": {"type": "continuous"}, "to": "5"}, {"from": "2", "smooth": {"type": "continuous"}, "to": "3"}, {"from": "2", "smooth": {"type": "continuous"}, "to": "4"}, {"from": "2", "smooth": {"type": "continuous"}, "to": "7"}, {"from": "3", "smooth": {"type": "continuous"}, "to": "5"}, {"from": "3", "smooth": {"type": "continuous"}, "to": "6"}, {"from": "5", "smooth": {"type": "continuous"}, "to": "6"}, {"from": "5", "smooth": {"type": "continuous"}, "to": "8"}, {"from": "4", "smooth": {"type": "continuous"}, "to": "7"}, {"from": "4", "smooth": {"type": "continuous"}, "to": "9"}, {"from": "7", "smooth": {"type": "continuous"}, "to": "9"}, {"from": "10", "smooth": {"type": "continuous"}, "to": "7"}, {"from": "6", "smooth": {"type": "continuous"}, "to": "8"}, {"from": "10", "smooth": {"type": "continuous"}, "to": "9"}, {"from": "10", "smooth": {"type": "continuous"}, "to": "8"}]);
+                  nodes = new vis.DataSet([{"age": 28, "borderWidth": 1, "color": "hsl(27, 83%, 43%)", "font": {"color": "#F5F5F5"}, "gender": "F", "id": "1", "label": "1", "name": "Alice", "occupation": "Data Scientist", "physics": false, "shadow": true, "shape": "dot", "size": 10, "title": "1", "x": 229.21099763584107, "y": 79.1803077061527}, {"age": 32, "borderWidth": 1, "color": "hsl(265, 96%, 56%)", "font": {"color": "#F5F5F5"}, "gender": "M", "id": "2", "label": "2", "name": "Bob", "occupation": "Engineer", "physics": false, "shadow": true, "shape": "dot", "size": 10, "title": "2", "x": 78.11538512097322, "y": 130.06791528817186}, {"age": 24, "borderWidth": 1, "color": "hsl(152, 88%, 48%)", "font": {"color": "#F5F5F5"}, "gender": "M", "id": "3", "label": "3", "name": "Charlie", "occupation": "Student", "physics": false, "shadow": true, "shape": "dot", "size": 10, "title": "3", "x": 198.68997257966947, "y": -45.65485601189045}, {"age": 30, "borderWidth": 1, "color": "hsl(244, 99%, 59%)", "font": {"color": "#F5F5F5"}, "gender": "F", "id": "5", "label": "5", "name": "Eve", "occupation": "Researcher", "physics": false, "shadow": true, "shape": "dot", "size": 10, "title": "5", "x": 250.0, "y": -137.32896117263934}, {"age": 45, "borderWidth": 1, "color": "hsl(58, 96%, 56%)", "font": {"color": "#F5F5F5"}, "gender": "M", "id": "4", "label": "4", "name": "David", "occupation": "Professor", "physics": false, "shadow": true, "shape": "dot", "size": 10, "title": "4", "x": -172.309237255175, "y": 250.0}, {"age": 35, "borderWidth": 1, "color": "hsl(85, 84%, 44%)", "font": {"color": "#F5F5F5"}, "gender": "M", "id": "7", "label": "7", "name": "George", "occupation": "Manager", "physics": false, "shadow": true, "shape": "dot", "size": 10, "title": "7", "x": -102.62851647288029, "y": 100.5552414204443}, {"age": 27, "borderWidth": 1, "color": "hsl(225, 83%, 43%)", "font": {"color": "#F5F5F5"}, "gender": "F", "id": "6", "label": "6", "name": "Fiona", "occupation": "Designer", "physics": false, "shadow": true, "shape": "dot", "size": 10, "title": "6", "x": 233.7032004750228, "y": -249.76111779620953}, {"age": 40, "borderWidth": 1, "color": "hsl(5, 100%, 60%)", "font": {"color": "#F5F5F5"}, "gender": "M", "id": "9", "label": "9", "name": "Ian", "occupation": "Director", "physics": false, "shadow": true, "shape": "dot", "size": 10, "title": "9", "x": -250.0, "y": 50.6198295464515}, {"age": 29, "borderWidth": 1, "color": "hsl(326, 85%, 45%)", "font": {"color": "#F5F5F5"}, "gender": "F", "id": "8", "label": "8", "name": "Hannah", "occupation": "Developer", "physics": false, "shadow": true, "shape": "dot", "size": 10, "title": "8", "x": 85.6528619493856, "y": -250.0}, {"age": 31, "borderWidth": 1, "color": "hsl(298, 87%, 47%)", "font": {"color": "#F5F5F5"}, "gender": "F", "id": "10", "label": "10", "name": "Jane", "occupation": "Analyst", "physics": false, "shadow": true, "shape": "dot", "size": 10, "title": "10", "x": -136.54256824272642, "y": -134.70549999014148}]);
+                  edges = new vis.DataSet([{"from": "1", "to": "2"}, {"from": "1", "to": "3"}, {"from": "1", "to": "5"}, {"from": "2", "to": "3"}, {"from": "2", "to": "4"}, {"from": "2", "to": "7"}, {"from": "3", "to": "5"}, {"from": "3", "to": "6"}, {"from": "5", "to": "6"}, {"from": "5", "to": "8"}, {"from": "4", "to": "7"}, {"from": "4", "to": "9"}, {"from": "7", "to": "9"}, {"from": "10", "to": "7"}, {"from": "6", "to": "8"}, {"from": "10", "to": "9"}, {"from": "10", "to": "8"}]);
 
                   nodeColors = {};
                   allNodes = nodes.get({ returnType: "Object" });
@@ -294,44 +303,7 @@ function highlightFilter(filter) {
                   // adding nodes and edges to the graph
                   data = {nodes: nodes, edges: edges};
 
-                  var options = {
-    "configure": {
-        "enabled": false
-    },
-    "edges": {
-        "color": {
-            "inherit": true
-        },
-        "smooth": {
-            "enabled": true,
-            "type": "dynamic"
-        }
-    },
-    "interaction": {
-        "dragNodes": true,
-        "hideEdgesOnDrag": false,
-        "hideNodesOnDrag": false
-    },
-    "physics": {
-        "enabled": true,
-        "forceAtlas2Based": {
-            "avoidOverlap": 0.1,
-            "centralGravity": 0.01,
-            "damping": 0.4,
-            "gravitationalConstant": -50,
-            "springConstant": 0.08,
-            "springLength": 100
-        },
-        "solver": "forceAtlas2Based",
-        "stabilization": {
-            "enabled": true,
-            "fit": true,
-            "iterations": 1000,
-            "onlyDynamicEdges": false,
-            "updateInterval": 50
-        }
-    }
-};
+                  var options = {"interaction": {"hover": true, "navigationButtons": true}, "physics": {"enabled": false, "barnesHut": {"gravitationalConstant": -2000, "centralGravity": 0.3, "springLength": 55.0, "springConstant": 0.04}, "solver": "barnesHut"}};
 
                   
 
